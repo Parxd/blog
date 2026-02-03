@@ -1,0 +1,43 @@
+main:
+  - name: nav.about
+    pageRef: /about
+    weight: 15
+    params:
+      icon: about
+  - name: nav.posts
+    pageRef: /posts
+    weight: 20
+    params:
+      icon: posts
+
+# footer menu
+footer:
+  - name: Contact
+    url: https://google.com
+    weight: 20
+    params:
+      icon: contact
+  - name: RSS Feed
+    url: /index.xml
+    weight: 30
+    params:
+      icon: rss
+
+# footer social link
+social:
+  - name: GitHub
+    url: https://github.com/Parxd
+    weight: 10
+    params:
+      icon: github
+  - name: LinkedIn
+    url: https://linkedin.com/in/danielparkwa
+    weight: 30
+    params:
+      icon: linkedin
+  - name: Email
+    url: mailto:dpark0909@gmail.com
+    weight: 40
+    params:
+      icon: email
+
