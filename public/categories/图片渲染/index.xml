@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>图片渲染 on Hugo Narrow</title>
+		<link>http://localhost:1313/categories/%E5%9B%BE%E7%89%87%E6%B8%B2%E6%9F%93/</link>
+		<description>Recent content in 图片渲染 on Hugo Narrow</description>
+		<generator>Hugo</generator>
+		<language>en-US</language>
+		
+		
+		
+		
+			<atom:link href="http://localhost:1313/categories/%E5%9B%BE%E7%89%87%E6%B8%B2%E6%9F%93/index.xml" rel="self" type="application/rss+xml" />
+	</channel>
+</rss>

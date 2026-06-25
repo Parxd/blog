@@ -2,16 +2,28 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>http://localhost:1313/tags/cuda/</loc>
+    <lastmod>2026-06-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/posts/fast-convolutions--beating-cudnn/</loc>
+    <lastmod>2026-06-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/tags/gpu/</loc>
+    <lastmod>2026-06-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/posts/</loc>
+    <lastmod>2026-06-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/tags/</loc>
+    <lastmod>2026-06-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/posts/cute-ly-writing-an-sm86-fp32fp32-gemm/</loc>
+    <lastmod>2026-02-05T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>http://localhost:1313/posts/a-learning-journey-through-ml-systems/</loc>
     <lastmod>2026-01-25T17:12:11+07:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/tags/personal/</loc>
-    <lastmod>2026-01-25T17:12:11+07:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/posts/</loc>
-    <lastmod>2026-01-25T17:12:11+07:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/tags/</loc>
     <lastmod>2026-01-25T17:12:11+07:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/</loc>
@@ -98,5 +110,13 @@
     <loc>http://localhost:1313/archives/</loc>
   </url><url>
     <loc>http://localhost:1313/series/</loc>
+  </url><url>
+    <loc>http://localhost:1313/tags/%E5%9B%BE%E7%89%87/</loc>
+  </url><url>
+    <loc>http://localhost:1313/categories/%E5%9B%BE%E7%89%87%E6%B8%B2%E6%9F%93/</loc>
+  </url><url>
+    <loc>http://localhost:1313/tags/%E6%B5%8B%E8%AF%95/</loc>
+  </url><url>
+    <loc>http://localhost:1313/tags/%E6%B8%B2%E6%9F%93/</loc>
   </url>
 </urlset>
