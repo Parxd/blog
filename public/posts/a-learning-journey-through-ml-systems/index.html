@@ -52,7 +52,7 @@ The real story started in my sophomore year of college, when I started my projec
 The real story started in my sophomore year of college, when I started my project GroundUpNeuralNet, a very minimal implementation of an MLP library I wrote in C&#43;&#43; after taking a DSA class. At this point, I wasn’t very concerned (or knowledgeable) about performance, so I leaned heavily on Eigen for the compute. Nevertheless, I still learned a good deal about multivariate calc, backprop, and just generally how to structure a relatively big C&#43;&#43; project. You can still play around with it today here , although it only supports linear layers and a handful of activation &#43; loss functions.">
 	<meta itemprop="datePublished" content="2026-06-24T00:00:00+00:00">
 	<meta itemprop="dateModified" content="2026-06-24T00:00:00+00:00">
-	<meta itemprop="wordCount" content="1045">
+	<meta itemprop="wordCount" content="1044">
 	<meta itemprop="image" content="http://localhost:1313/images/og-default.avif">
 	<meta itemprop="keywords" content="Personal">
 
@@ -840,7 +840,7 @@ The real story started in my sophomore year of college, when I started my projec
   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
 </svg>
 
-          <span>1045 words</span>
+          <span>1044 words</span>
         </div>
       
 
@@ -1246,7 +1246,7 @@ You can still play around with it today <a href="https://github.com/Parxd/Ground
 >repo<svg class="h-3 w-3 flex-shrink-0" id="external-link" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
 </a>.</p>
 <p>If you look at the commit history on it, you&rsquo;ll see a lot of time spent on just matmul kernels. While it really can&rsquo;t get any simpler algorithmically, optimizing GEMMs teaches so many fundamental lessons about GPU architecture and designing hardware-aware kernels. I&rsquo;d highly recommend anyone interested in ML systems to try going from zero to SOTA on a GEMM kernel as a first step.</p>
-<p>I&rsquo;ve also been up to a lot of other stuff—like this April, when I took a break from NVIDIA to check out the state of AMD accelerators. I participated in the AMD x GPU Mode e2e speedrun competition on the quantize + block-scaled <code>fp4</code> matmul track, where I placed in the top 20%, even as someone pretty new to HIP and AMD&rsquo;s CDNA-series ISA. Although it was quite a stressful crunch towards the end, I learned an incredible amount about programming AMD chips in a very short timeframe. I would highly recommend anyone getting into kernels to also participate in these <a href="https://www.gpumode.com/home"target="_blank"
+<p>I&rsquo;ve also been up to a lot of other stuff—like this April, when I took a break from NVIDIA to check out the state of AMD accelerators. I participated in the AMD x GPU Mode e2e speedrun competition on the quantize + block-scaled <code>fp4</code> matmul track, where I placed in the top 20%, even as someone pretty new to HIP and AMD&rsquo;s ISA. Although it was quite a stressful crunch towards the end, I learned an incredible amount about programming AMD chips in a very short timeframe. I would highly recommend anyone getting into kernels to also participate in these <a href="https://www.gpumode.com/home"target="_blank"
   class="inline-flex items-center gap-1"
 >GPU Mode competitions<svg class="h-3 w-3 flex-shrink-0" id="external-link" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
 </a> to upskill fast.</p>
@@ -1349,7 +1349,7 @@ You can still play around with it today <a href="https://github.com/Parxd/Ground
       <div class="nav-item">
         
           <a
-            href="/posts/fast-convolutions--beating-cudnn/"
+            href="/posts/cute-ly-writing-an-sm86-fp32fp32-gemm/"
             class="group bg-card border-border hover:bg-primary/5 hover:border-primary/20 focus:ring-primary/20 flex min-h-[140px] flex-col justify-between rounded-xl border p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.02] hover:shadow-lg focus:ring-2 focus:outline-none">
             <div>
               <div class="mb-3 flex items-center gap-3">
@@ -1363,7 +1363,7 @@ You can still play around with it today <a href="https://github.com/Parxd/Ground
 
               <h3
                 class="text-foreground group-hover:text-primary mb-3 line-clamp-2 text-lg leading-tight font-semibold transition-colors duration-200">
-                Fast Convolutions (&#43; beating cuDNN)
+                CuTe-ly writing an SM86 fp32fp32 GEMM
               </h3>
             </div>
 
@@ -1373,8 +1373,8 @@ You can still play around with it today <a href="https://github.com/Parxd/Ground
   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
 </svg>
 
-              <time datetime="2026-06-24">
-                Jun 24
+              <time datetime="2026-02-05">
+                Feb 05
               </time>
             </div>
           </a>
@@ -1384,20 +1384,36 @@ You can still play around with it today <a href="https://github.com/Parxd/Ground
       
       <div class="nav-item">
         
-          <div
-            class="bg-muted/30 border-border/50 flex min-h-[140px] flex-col justify-center rounded-xl border p-6">
-            <div class="mb-3 flex items-center justify-end gap-3">
-              <span class="text-muted-foreground/50 text-sm font-medium">
-                No next post
-              </span>
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <a
+            href="/posts/fast-convolutions--beating-cudnn/"
+            class="group bg-card border-border hover:bg-primary/5 hover:border-primary/20 focus:ring-primary/20 flex min-h-[140px] flex-col justify-between rounded-xl border p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.02] hover:shadow-lg focus:ring-2 focus:outline-none">
+            <div>
+              <div class="mb-3 flex items-center justify-end gap-3">
+                <span class="text-muted-foreground text-sm font-medium">
+                  Next
+                </span>
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 </svg>
+              </div>
+
+              <h3
+                class="text-foreground group-hover:text-primary mb-3 line-clamp-2 text-right text-lg leading-tight font-semibold transition-colors duration-200">
+                Fast Convolutions (&#43; beating cuDNN)
+              </h3>
             </div>
-            <p class="text-muted-foreground/50 text-right text-sm">
-              This is the latest post
-            </p>
-          </div>
+
+            <div
+              class="text-muted-foreground mt-auto flex items-center justify-end gap-2 text-xs">
+              <time datetime="2026-06-25">
+                Jun 25
+              </time>
+              <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+</svg>
+
+            </div>
+          </a>
         
       </div>
     </div>

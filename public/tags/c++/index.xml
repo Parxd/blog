@@ -1,25 +1,18 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 	<channel>
-		<title>CUDA on Hugo Narrow</title>
-		<link>http://localhost:44891/tags/cuda/</link>
-		<description>Recent content in CUDA on Hugo Narrow</description>
+		<title>C&#43;&#43; on Hugo Narrow</title>
+		<link>http://localhost:44891/tags/c&#43;&#43;/</link>
+		<description>Recent content in C&#43;&#43; on Hugo Narrow</description>
 		<generator>Hugo</generator>
 		<language>en-US</language>
 		
 		
 		
 		
-			<lastBuildDate>Thu, 25 Jun 2026 00:00:00 +0000</lastBuildDate>
+			<lastBuildDate>Thu, 05 Feb 2026 00:00:00 +0000</lastBuildDate>
 		
-			<atom:link href="http://localhost:44891/tags/cuda/index.xml" rel="self" type="application/rss+xml" />
-			<item>
-				<title>Fast Convolutions (&#43; beating cuDNN)</title>
-				<link>http://localhost:44891/posts/fast-convolutions--beating-cudnn/</link>
-				<pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/posts/fast-convolutions--beating-cudnn/</guid>
-				<description></description>
-			</item>
+			<atom:link href="http://localhost:44891/tags/c++/index.xml" rel="self" type="application/rss+xml" />
 			<item>
 				<title>CuTe-ly writing an SM86 fp32fp32 GEMM</title>
 				<link>http://localhost:44891/posts/cute-ly-writing-an-sm86-fp32fp32-gemm/</link>

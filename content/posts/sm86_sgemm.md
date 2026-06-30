@@ -2,12 +2,12 @@
 title: "CuTe-ly writing an SM86 fp32fp32 GEMM"
 date: 2026-02-05
 comment: true
-tags: ["CUDA", "GPU"]
+tags: ["CUDA", "C++", "GPU"]
 ---
 
 I know what you're thinking. A `fp32fp32` GEMM in 2026? For Ampere??
 
-Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe's (now almost 6 years old) peak theoretical performance for `bf16` is 312 TFLOPs/sec. and 156 TFLOPs/sec. for `tf32`, while `fp32` sits at a "measly" 19.5 TFLOPs/sec. With [mixed-precision](https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html) training and quantized inference being the norm, GEMM itself is practically never done in `fp32` today.
+Yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe's (now almost 6 years old) peak theoretical performance for `bf16` is 312 TFLOPs/sec. and 156 TFLOPs/sec. for `tf32`, while `fp32` sits at a "measly" 19.5 TFLOPs/sec. With [mixed-precision](https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html) training and quantized inference being the norm, GEMM itself is practically never done in `fp32` today.
 
 *Despite* all of these (good) reasons, SGEMM still acts as a great learning experience for squeezing the most performance out of GPUs (without involving tensor cores, of course). In this blogpost, I will briefly go over the structure of GEMM and iteratively work through how I optimized a kernel using [NVIDIA's CUTLASS CuTe](https://github.com/NVIDIA/cutlass/tree/main) library to match/exceed cuBLAS on *certain* problem shapes on SM86 using my personal RTX 3070 Mobile card. Fair warning though: this will not only attempt to serve as a lesson on optimizing a kernel but also on using CuTe, as I found it to be a pretty big help when trying to iterate quickly on kernels, although I know some are not the biggest fans of it...
 
@@ -77,14 +77,14 @@ for (int m = 0; m < thread_M; ++m) {
 // LDS = read from SMEM, STS = write to SMEM
 ```
 
-Unfortunately for us, Ampere does not have such features. The closest equivalent are the `cp.async` family of instructions, which allow a warp to asynchronously transfer memory from DRAM to SMEM (one-way), bypassing the registerfile without being blocked. Note that `cp.async` requires every thread in a block to cooperatively load a tile into SMEM, unlike TMA. Still, this instruction will come in handy, as we can asynchronously load the next tile of data into a circular SMEM buffer while the current tile is being processed to keep compute units busy. 
+Unfortunately for us, Ampere does not have such features. The closest equivalent are the `cp.async` family of instructions, which allow a warp to asynchronously transfer memory from DRAM to SMEM (one-way), bypassing the registerfile without blocking. Note that `cp.async` requires every thread in a block to cooperatively load a tile into SMEM, unlike TMA. Still, this instruction will come in handy, as we can asynchronously load the next tile of data into a circular SMEM buffer while the current tile is being processed to keep compute units busy. 
 
 We use a similar pipelining technique when moving data to the registerfile from SMEM. We allocate 2 "$K$-slices" worth of operand data (or as we will call them &mdash; blocks) from $A, B$ and have each register-backed buffer ping-pong between compute and reading the next blocks from SMEM. This diagram from NVIDIA outlines the approach well:
 
 ![pipeline diagram](/images/posts/sm86_gemm/software-pipeline.jpg)
 
-## the kernel
-With all that being said, let's actually write the kernel! We'll hand off most of the indexing calculations to CuTe to deal with at compile-time, so that we can save some of our precious registers. We'll start with the necessary setup on host-side. This will be a `nn` kernel, where both inputs are not transposed and expected to be in column-major format.
+## host-side setup
+With all that being said, let's setup the kernel! We'll hand off most of the indexing calculations to CuTe to deal with at compile-time, so that we can save some of our precious registers. We'll start with the necessary setup on host-side. This will be a `nn` kernel, where both inputs are not transposed and expected to be in column-major format.
 ```c++
 void nn(int m, int n, int k, 
         float alpha, const float* A, int ldA,
@@ -107,9 +107,9 @@ void nn(int m, int n, int k,
     ...
 }
 ```
-We define the SMEM tiling shapes for $A, B$ to be $128 \times 32$, and the strides for their entire tensors in DRAM to be column-major. The DRAM and SMEM $B$ tile shapes are $(N, K)$ rather than the usual $(K, N)$ to consistently keep the reduction mode $K$ on the right, like $A$. For the SMEM tiles, we'll use a 3-stage circular buffer for both. To use the widest granularity for reads/writes (i.e. 128-bits), both SMEM tiles should also be in column-major. Wider reads and writes lower instruction count and *generally* improve performance. 
+We define the SMEM tiling shapes for $A, B$ to be $128 \times 32$, and the strides for their entire tensors in DRAM to be column-major. The DRAM and SMEM $B$ tile shapes are $(N, K)$ rather than the usual $(K, N)$ to consistently keep the reduction mode $K$ on the right, like $A$, which is $(M, K)$. For the SMEM tiles, we'll use a 3-stage circular buffer for both. To use the widest granularity for reads/writes (i.e. 128-bits), both SMEM tiles should also be in column-major. Wider reads and writes lower instruction count and *generally* improve performance. 
 
-> `cp.async` can move memory at 4-byte, 8-byte, and 16-byte granularities. Furthermore, reads AND writes must strictly be to contiguous chunks of memory, unlike with the standard vector (e.g. `float2`, `int4`, etc.) types. For the $B$ matrix, some `nn` GEMM implementations read 16 contiguous bytes from DRAM and chunk it into 4 discontiguous 32-byte writes to SMEM to transpose it to enforce a stride-1 along the $N$-axis instead of $K$. This allows for 16-byte reads from SMEM to the registerfile later. Thus, we unfortunately cannot do something similar here.
+> `cp.async` can move memory at 4-byte, 8-byte, and 16-byte granularities. Furthermore, reads AND writes must strictly be to contiguous chunks of memory, unlike with the standard vectorized loads. For the $B$ matrix, some `nn` GEMM implementations read 16 contiguous bytes from DRAM and chunk it into 4 discontiguous 32-byte writes to SMEM to transpose it to enforce a stride-1 along the $N$-axis instead of $K$. This allows for 16-byte reads from SMEM to the registerfile later. Thus, we unfortunately cannot do something similar here.
 
 > [!NOTE] CuTe Layouts
 > A CuTe tensor is comprised of an iterator and Layout, which is a potentially nested tuple of a Shape and Stride, which themselves are potentially nested tuples. The layout is convenient because it informs us of the logical shape of a tensor *and* the "contiguity" of the elements, which is very important when writing kernels. However, at its core, a layout is simply a function from $Z^n \rightarrow Z$ that results in a linear offset by computing a dot product between an input $n$-mode tuple (coord) and the layout's stride. Lastly, CuTe uses colexiographical order; it always "fills" a layout starting from the left-most mode moving to the right.
@@ -160,9 +160,9 @@ Setting up the tiled MMA and copy objects, there's a bit of boilerplate code nee
 
 The layout of the threads for $A$ is $(32 \times 8)$ in column-major, with each thread responsible for 4 column-major elements, whereas for $B$ both are in row-major arrangement. It is very important to write correct layouts for any problem to ensure read-write access patterns that we actually intended (CuTe will also statically fail if given an impossible access pattern). 
 
-A good way to start writing these is to write out the ideal case, or what we'd expect the tiling to be. To coalesce 128-byte DRAM reads and use thread-local 16-byte loads, there should be a stride of 1 between each thread's 4 `fp32`s and stride of 4 between threads. For example, visualizing the layout for $A$:
+A good way to start writing these is to write out the ideal case, or what we'd expect the tiling to be. To coalesce 128-byte DRAM reads and use thread-local 16-byte loads, there should be a stride of 1 between each thread's 4 `fp32`s and stride of 4 between threads.
 
-![a partition](/images/posts/sm86_gemm/partition.png)
+![a partition](/images/posts/sm86_gemm/partition.png "Visualizing the layout for $A$ (not to scale, some values omitted)")
 
 Above is an ideal partitioning of the destination tensor. We can see *some* values mapped to Thread 0 in pink. The green represents the first 4 values mapped to Thread 1. Thread 2's values would be right below, and so on, tiling in column-major order. The blue represents the actual stride required in physical linear memory to jump to the next value. The stride-1 between each value within the 4-value blocks allow us to use the wide 16-byte instructions. This layout also maximally coalesces GMEM (global memory) transactions.
 
@@ -193,9 +193,119 @@ auto tidfrg_D(DTensor&& dtensor) {
 }
 ```
 
-Corresponding each term to what we saw, we see that this tiled copy uses 256 threads, where each thread is mapped to 4 values local to a copy atom (16-byte `cp.async` atom = 4x `fp32`), 4 values tiled across the K-mode, and 3 values tiled across the shared memory's 3 stages, matching our earlier visualization. As a side note, the layouts from `tidfrg` are sliced out by each thread by slicing the `Thr`-mode with the thread index within the actual kernel.
+Corresponding each term to what we saw, we see that this tiled copy uses 256 threads, where each thread is mapped to 4 values local to a copy atom (16-byte `cp.async` atom = 4x `fp32`), 4 values tiled across the K-mode, and 3 values tiled across the shared memory's 3 stages, matching our earlier visualization. Internally, `partition_X` uses the layouts from `tidfrg` by indexing the `Thr`-mode with the thread index in the actual kernel.
 
 > [!IMPORTANT] Occupancy & Parallelism
 > You may be asking how we chose the number of threads to use. GPUs have constrained on-chip memory sizes. For compute-bound problems, we typically prefer loading larger tile sizes to faster on-chip memory since data reuse is high. Fetching data from HBM once for larger tiles and reusing it from shared memory or registers helps amortize that memory latency across more arithmetic operations.
 > 
 > However, this comes at a price &mdash; heavier on-chip memory usage reduces occupancy, the number of warps (group of 32 threads) resident on an SM. Fewer warps means the scheduler may not be able to switch to another warp when one is "blocked", potentially preventing latency hiding. This occupancy vs. arithmetic intensity tradeoff is an important concept that informs us of a kernel's optimal launch configuration.
+
+Lastly, we set up a `TiledMMA` object, which assigns threads to values for matrix-multiply accumulation (MMA). Similar to `TiledCopy`, it takes an `MMA_Trait` wrapping an `MMA_Atom`, which defines the smallest "unit" of computation to be tiled. This allows for easy partitioning of the operand $A$ and $B$ matrices and register allocation for the product $C$ fragment. Since our operands are in `fp32`, which don't have tensor core support, we use the `UniversalFMA<float>` atom here. But, for example, if our operands were to be in half-precision, we'd want to use an atom like `SM80_16x8x16_F16F16F16F16_TN` that wraps a tensor core (TC) instruction.
+
+Each of these atoms intrinsically involve a different number of threads. For FMA, it's just 1 thread performing a scalar computation. Ampere TC instructions are at warp-level; they require a warp to cooperatively compute a small matrix product, while Hopper TCs involve a warpgroup (4 warps) and so on. We'll focus on the simple FMA case.
+
+Suppose that after we've done some tuning, we decide to use 256 threads in our kernel. Of course, writing a kernel for first time, you wouldn't know the optimal number of threads, but 128 or 256 threads tend to be good starting points for GEMMs. With each thread computing 1 scalar fragment of $C$, a threadblock of 256 threads can independently compute 256 $C$ values "per atom". For simplicity (and other reasons we'll later see), we'll arrange the atom's 256 values to compute a $(16 \times 16)$ fragment of $C$.
+
+![c-mma](/images/posts/sm86_gemm/c-mma.png "`print_latex` helps us visualize the atom. Each thread computes 1 scalar product and accumulates to its 1 fragment register.")
+
+You may be asking: "But I thought our setup was for each threadblock to accumulate a $(128 \times 128)$ tile of $C$?" `TiledMMA` exposes similar methods to `TiledCopy`, where we can partition an arbitrarily-sized input tensor according to this smaller atom layout. In other words, it replicates the atom across given matrices. Partitioning a $(128 \times 128)$ tile of $C$ thus results in an $(8 \times 8)$ tile of atoms. There is also `thrfrg`, which is the MMA equivalent to the `tidfrg` from `TiledCopy` we saw earlier. Printing `thrfrg_C(gC).shape`:
+
+$$
+((1, (16, 16)), (1, (8, 8)))
+$$
+
+And again, looking at the source code comments:
+
+```c++
+// Tile a tensor or a layout from shape
+//   (M,N,...)
+// to shape
+//   ((ThrV,(ThrM,ThrN)),(FrgV,(RestM,RestN,...)))
+// where
+//   ThrV:  The threads local to an MMA. layout<0>(ThrLayoutVMNK): ThrV -> thread_idx
+//   ThrM:  The threads tiled in M.      layout<1>(ThrLayoutVMNK): ThrM -> thread_idx
+//   ThrN:  The threads tiled in N.      layout<2>(ThrLayoutVMNK): ThrN -> thread_idx
+//   FrgV:  The values local to an MMA.
+//   RestM: The values tiled in M.
+//   RestN: The values tiled in N.
+auto thrfrg_C(CTensor&& ctensor) const {
+    ...
+}
+```
+We see that there is exactly 1 thread and 1 value local to the MMA atom, and 16 threads tiled in the M- and N-modes. To cover the entire product, there then must be 8 values tiled in the M- and N-modes too, meaning the $C$ fragment alone requires 64&times; 32-bit registers per thread. Let's look at `thrfrg_A` now:
+
+$$
+((1,(16,1)),(1,(8,32,3)))
+$$
+
+## device-side setup
+```c++
+// cta_shape is (Tile M, Tile N, Tile K) = (128, 128, 32)
+auto mA = make_tensor(make_gmem_ptr(A), make_layout(make_shape(m, k), stride_A));
+auto mB = make_tensor(make_gmem_ptr(B), make_layout(make_shape(n, k), stride_B));
+auto mC = make_tensor(make_gmem_ptr(C), make_layout(make_shape(m, n), stride_C));
+
+auto coord = make_coord(blockIdx.y, blockIdx.x, _);
+auto gA = local_tile(mA, cta_shape, coord, Step<_1, X, _1>{});
+auto gB = local_tile(mB, cta_shape, coord, Step<X, _1, _1>{});
+auto gC = local_tile(mC, cta_shape, coord, Step<_1, _1, X>{});
+```
+
+This code is boilerplate for GEMMs. We first create the dynamically-shaped global memory tensors. To "assign" each $(M, N)$ tile coord to threadblocks, we create a `Coord` object based on block index, and use the `local_tile` API. Internally, this function is a wrapper on top of `zipped_divide` that take `Coord` and `Step` objects, which specify which tile coord we want to slice out and which modes we want to keep/discard, respectively. Notice the `X` in the `Step` object, which means that the corresponding mode in the `cta_shape` divisor is dropped. Since it's of shape $(\text{Tile M, Tile N, Tile K})$, we specify the `X` at mode-1 for $A$ and mode-0 for $B$.
+
+For example, for `gA`, this means we index mode-0 of the "quotient" tensor of shape $\left(\frac{M}{\text{Tile M}}, \frac{K}{\text{Tile K}}\right)$ by `blockIdx.y` and keep all of mode-1, since each block does a reduction along the K-mode. Thus, we set `Coord` to `(blockIdx.y, blockIdx.x, _)` &mdash; *in CuTe syntax, an underscore indicates we keep all of that mode.* This results in `gA` and `gB` of shape $(128, K)$.
+
+![threadblock-partitioning](/images/posts/sm86_gemm/block-tile.png "A visual of threadblock partitioning (not to scale)")
+
+```c++
+extern __shared__ float smem_buffer[];
+auto sA = make_tensor(make_smem_ptr(&smem_buffer[0]), sA_layout);
+auto sB = make_tensor(make_smem_ptr(&smem_buffer[cosize_v<sALayout>]), sB_layout);
+
+auto tA = copy_A.get_thread_slice(threadIdx.x);
+auto tAgA = tA.partition_S(gA);
+auto tAsA = tA.partition_D(sA);
+
+auto tB = copy_B.get_thread_slice(threadIdx.x);
+auto tBgB = tB.partition_S(gB);
+auto tBsB = tB.partition_D(sB);
+```
+
+We then setup the shared memory tensors from a single buffer, and partition the source and destination tensors for each thread based on the `TiledCopy` objects we discussed earlier. Printing `tAsA.shape` from any thread gives us $(4, 1), 1, 4, 3$. We can see that this is exactly what we saw from `tidfrg_D`, but without mode-0, since we've now sliced that tensor to get the thread-local partition. Similarly, `tAgA.shape` prints $(4, 1), 1, 4, 32$ when $K = 1024$, as $\frac{1024}{\text{Tile K}} = 32$ (mode-3 represents values tiled across $K$).
+
+## mainloop
+We'll now implement the mainloop, where each threadblock loops over its K-tiles and accumulates its individual matrix product. We begin with a prefetch to avoid some extra conditional statements inside the loop.
+
+```c++
+uint gmem_tile_idx = 0;
+uint gmem_tiles = size<2>(gA);
+constexpr uint smem_pipes = size<2>(sA);
+
+// prefetch for first (smem_pipes - 1) pipes
+CUTE_UNROLL
+for (uint i = 0; i < smem_pipes - 1; ++i) {
+    copy(copy_A, tAgA(_,_,_,gmem_tile_idx), tAsA(_,_,_,i));
+    copy(copy_B, tBgB(_,_,_,gmem_tile_idx), tBsB(_,_,_,i));
+    cp_async_fence();
+    --gmem_tiles;
+    if (gmem_tiles) {
+        ++gmem_tile_idx;
+    }
+}
+```
+
+We initialize some variables for tracking:
+- `gmem_tile_idx` to track which global K-tile is next to be loaded
+- `gmem_tiles` is the number of total K-tiles, equal to $\frac{K}{\text{Tile K}}$ (cannot be `constexpr`, as $K$ is a runtime value)
+- `smem_pipes` is the number of shared memory pipes (in our case &mdash; 3)
+
+In the prefetch loop, we fire off the loads for the first 2 out of 3 pipes. For each `copy` call, we glob the values local to a copy atom, values tiled across Tile M, and values tiled across Tile K by placing an underscore at those modes. We then copy this K-tile at position `gmem_tile_idx` to the corresponding pipe. Lastly, we decrement the number of K-tiles left to load, and only increment the K-tile position if there are more left. Otherwise, the next iteration simply loads the same global K-tile into the next pipe to prevent a segfault.
+
+> [!IMPORTANT] Async Copy
+> To use `cp.async` effectively, CuTe provides two key functions:
+> - `cp_async_fence()` wraps the `cp.async.commit_group` PTX instruction, which "commits all prior initiated but uncommitted `cp.async` instructions into a cp.async-group." (NVIDIA)
+>   - This is effectively a code barrier that allows us to create logical groups of loads, so that we can wait for certain groups to finish before doing some work, while intentionally allowing others to continue. 
+> - `cp_async_wait<N>()` wraps the `cp.async.wait_group` instruction, which "will cause executing thread to wait till only N or fewer of the most recent cp.async-groups are pending and all the prior cp.async-groups committed by the executing threads are complete." (NVIDIA)
+>   - This gives us the aforementioned ability to wait for certain groups to finish. The fences create an implicit queue, and this instruction lets us "pop off" a specified number of pending groups from the front of the queue.
+> ![hello](/images/posts/sm86_gemm/cp-async.png "An example of 6 committed groups and a `cp_async_wait` call with N=4. Guarantees that at most 4 groups are pending (may be less) and anything older is completed.")
+

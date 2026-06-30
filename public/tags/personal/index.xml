@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 	<channel>
 		<title>Personal on Hugo Narrow</title>
-		<link>http://localhost:1313/tags/personal/</link>
+		<link>http://localhost:44891/tags/personal/</link>
 		<description>Recent content in Personal on Hugo Narrow</description>
 		<generator>Hugo</generator>
 		<language>en-US</language>
@@ -10,14 +10,14 @@
 		
 		
 		
-			<lastBuildDate>Sun, 25 Jan 2026 17:12:11 +0700</lastBuildDate>
+			<lastBuildDate>Wed, 24 Jun 2026 00:00:00 +0000</lastBuildDate>
 		
-			<atom:link href="http://localhost:1313/tags/personal/index.xml" rel="self" type="application/rss+xml" />
+			<atom:link href="http://localhost:44891/tags/personal/index.xml" rel="self" type="application/rss+xml" />
 			<item>
 				<title>a learning journey through ML systems</title>
-				<link>http://localhost:1313/posts/a-learning-journey-through-ml-systems/</link>
-				<pubDate>Sun, 25 Jan 2026 17:12:11 +0700</pubDate>
-				<guid>http://localhost:1313/posts/a-learning-journey-through-ml-systems/</guid>
+				<link>http://localhost:44891/posts/a-learning-journey-through-ml-systems/</link>
+				<pubDate>Wed, 24 Jun 2026 00:00:00 +0000</pubDate>
+				<guid>http://localhost:44891/posts/a-learning-journey-through-ml-systems/</guid>
 				<description>&lt;p&gt;As I approach a little over a year since formally starting my journey of self-learning and stumbling through the world of ML systems, I wanted to look back and recap / document my entire roadmap and the insane rabbit holes I&amp;rsquo;ve fallen through during the past year, and also outline what my goals are for the next couple months.&lt;/p&gt;&#xA;&lt;p&gt;The real story started in my sophomore year of college, when I started my project GroundUpNeuralNet, a &lt;em&gt;very&lt;/em&gt; minimal implementation of an MLP library I wrote in C++ after taking a DSA class. At this point, I wasn&amp;rsquo;t very concerned (or knowledgeable) about performance, so I leaned heavily on Eigen for the compute. Nevertheless, I still learned a good deal about multivariate calc, backprop, and just generally how to structure a relatively big C++ project.&#xA;You can still play around with it today &lt;a href=&#34;https://github.com/Parxd/GroundUpNeuralNet&#34;target=&#34;_blank&#34;&#xA;  class=&#34;inline-flex items-center gap-1&#34;&#xA;&gt;here&lt;svg class=&#34;h-3 w-3 flex-shrink-0&#34; id=&#34;external-link&#34; xmlns=&#34;http://www.w3.org/2000/svg&#34; viewBox=&#34;0 0 24 24&#34;&gt;&lt;path fill=&#34;none&#34; stroke=&#34;currentColor&#34; stroke-linecap=&#34;round&#34; stroke-linejoin=&#34;round&#34; stroke-width=&#34;2&#34; d=&#34;M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6&#34;/&gt;&lt;/svg&gt;&#xA;&lt;/a&gt;, although it only supports linear layers and a handful of activation + loss functions.&lt;/p&gt;</description>
 			</item>
 	</channel>

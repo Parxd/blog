@@ -1,6 +1,6 @@
 ---
 title: "Fast Convolutions (+ beating cuDNN)"
-date: 2026-06-24
+date: 2026-06-25
 comment: true
-tags: ["CUDA", "GPU"]
+tags: ["CUDA", "GPU", "Python"]
 ---

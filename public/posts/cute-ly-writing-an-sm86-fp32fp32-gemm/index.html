@@ -12,8 +12,8 @@
 <title>CuTe-ly writing an SM86 fp32fp32 GEMM | Hugo Narrow</title>
 
 <meta name="description" content="I know what you&rsquo;re thinking. A fp32fp32 GEMM in 2026? For Ampere??
-Yes, yes, SGEMM is rarely ever used these days in the ML space given the..." />
-<meta name="keywords" content="CUDA, GPU" />
+Yes, SGEMM is rarely ever used these days in the ML space given the massive..." />
+<meta name="keywords" content="CUDA, C&#43;&#43;, GPU" />
 <meta name="author" content="Daniel Park" />
 <meta name="language" content="en-US" />
 
@@ -31,13 +31,14 @@ Yes, yes, SGEMM is rarely ever used these days in the ML space given the..." />
 	<meta property="og:site_name" content="Hugo Narrow">
 	<meta property="og:title" content="CuTe-ly writing an SM86 fp32fp32 GEMM">
 	<meta property="og:description" content="I know what you’re thinking. A fp32fp32 GEMM in 2026? For Ampere??
-Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe’s (now almost 6 years old) peak theoretical performance for bf16 is 312 TFLOPs/sec. and 156 TFLOPs/sec. for tf32, while fp32 sits at a “measly” 19.5 TFLOPs/sec. With mixed-precision training and quantized inference being the norm, GEMM itself is practically never done in fp32 today.">
+Yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe’s (now almost 6 years old) peak theoretical performance for bf16 is 312 TFLOPs/sec. and 156 TFLOPs/sec. for tf32, while fp32 sits at a “measly” 19.5 TFLOPs/sec. With mixed-precision training and quantized inference being the norm, GEMM itself is practically never done in fp32 today.">
 	<meta property="og:locale" content="en_US">
 	<meta property="og:type" content="article">
 		<meta property="article:section" content="posts">
 		<meta property="article:published_time" content="2026-02-05T00:00:00+00:00">
 		<meta property="article:modified_time" content="2026-02-05T00:00:00+00:00">
 		<meta property="article:tag" content="CUDA">
+		<meta property="article:tag" content="C&#43;&#43;">
 		<meta property="article:tag" content="GPU">
 		<meta property="og:image" content="http://localhost:1313/images/og-default.avif">
 
@@ -46,17 +47,17 @@ Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive
 	<meta name="twitter:image" content="http://localhost:1313/images/og-default.avif">
 	<meta name="twitter:title" content="CuTe-ly writing an SM86 fp32fp32 GEMM">
 	<meta name="twitter:description" content="I know what you’re thinking. A fp32fp32 GEMM in 2026? For Ampere??
-Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe’s (now almost 6 years old) peak theoretical performance for bf16 is 312 TFLOPs/sec. and 156 TFLOPs/sec. for tf32, while fp32 sits at a “measly” 19.5 TFLOPs/sec. With mixed-precision training and quantized inference being the norm, GEMM itself is practically never done in fp32 today.">
+Yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe’s (now almost 6 years old) peak theoretical performance for bf16 is 312 TFLOPs/sec. and 156 TFLOPs/sec. for tf32, while fp32 sits at a “measly” 19.5 TFLOPs/sec. With mixed-precision training and quantized inference being the norm, GEMM itself is practically never done in fp32 today.">
 
 
 	<meta itemprop="name" content="CuTe-ly writing an SM86 fp32fp32 GEMM">
 	<meta itemprop="description" content="I know what you’re thinking. A fp32fp32 GEMM in 2026? For Ampere??
-Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe’s (now almost 6 years old) peak theoretical performance for bf16 is 312 TFLOPs/sec. and 156 TFLOPs/sec. for tf32, while fp32 sits at a “measly” 19.5 TFLOPs/sec. With mixed-precision training and quantized inference being the norm, GEMM itself is practically never done in fp32 today.">
+Yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe’s (now almost 6 years old) peak theoretical performance for bf16 is 312 TFLOPs/sec. and 156 TFLOPs/sec. for tf32, while fp32 sits at a “measly” 19.5 TFLOPs/sec. With mixed-precision training and quantized inference being the norm, GEMM itself is practically never done in fp32 today.">
 	<meta itemprop="datePublished" content="2026-02-05T00:00:00+00:00">
 	<meta itemprop="dateModified" content="2026-02-05T00:00:00+00:00">
-	<meta itemprop="wordCount" content="2538">
+	<meta itemprop="wordCount" content="3862">
 	<meta itemprop="image" content="http://localhost:1313/images/og-default.avif">
-	<meta itemprop="keywords" content="CUDA,GPU">
+	<meta itemprop="keywords" content="CUDA,C&#43;&#43;,GPU">
 
 
 
@@ -829,7 +830,7 @@ Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive
 </svg>
 
           <span
-            >12 minute</span
+            >19 minute</span
           >
         </div>
       
@@ -842,7 +843,7 @@ Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive
   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
 </svg>
 
-          <span>2538 words</span>
+          <span>3862 words</span>
         </div>
       
 
@@ -880,6 +881,12 @@ Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive
                 </a>
               
                 <a
+                  href="/tags/c&#43;&#43;/"
+                  class="bg-muted/50 text-muted-foreground hover:bg-primary/10 hover:text-primary focus:ring-primary/20 inline-flex items-center rounded px-2 py-1 text-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-105 focus:ring-2 focus:outline-none">
+                  #C&#43;&#43;
+                </a>
+              
+                <a
                   href="/tags/gpu/"
                   class="bg-muted/50 text-muted-foreground hover:bg-primary/10 hover:text-primary focus:ring-primary/20 inline-flex items-center rounded px-2 py-1 text-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-105 focus:ring-2 focus:outline-none">
                   #GPU
@@ -904,7 +911,7 @@ Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive
   
   <article class="prose prose-neutral dark:prose-invert mb-12 max-w-none">
     <p>I know what you&rsquo;re thinking. A <code>fp32fp32</code> GEMM in 2026? For Ampere??</p>
-<p>Yes, yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe&rsquo;s (now almost 6 years old) peak theoretical performance for <code>bf16</code> is 312 TFLOPs/sec. and 156 TFLOPs/sec. for <code>tf32</code>, while <code>fp32</code> sits at a &ldquo;measly&rdquo; 19.5 TFLOPs/sec. With <a href="https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html"target="_blank"
+<p>Yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe&rsquo;s (now almost 6 years old) peak theoretical performance for <code>bf16</code> is 312 TFLOPs/sec. and 156 TFLOPs/sec. for <code>tf32</code>, while <code>fp32</code> sits at a &ldquo;measly&rdquo; 19.5 TFLOPs/sec. With <a href="https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html"target="_blank"
   class="inline-flex items-center gap-1"
 >mixed-precision<svg class="h-3 w-3 flex-shrink-0" id="external-link" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
 </a> training and quantized inference being the norm, GEMM itself is practically never done in <code>fp32</code> today.</p>
@@ -1377,7 +1384,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 })();
 </script>
-<p>Unfortunately for us, Ampere does not have such features. The closest equivalent are the <code>cp.async</code> family of instructions, which allow a warp to asynchronously transfer memory from DRAM to SMEM (one-way), bypassing the registerfile without being blocked. Note that <code>cp.async</code> requires every thread in a block to cooperatively load a tile into SMEM, unlike TMA. Still, this instruction will come in handy, as we can asynchronously load the next tile of data into a circular SMEM buffer while the current tile is being processed to keep compute units busy.</p>
+<p>Unfortunately for us, Ampere does not have such features. The closest equivalent are the <code>cp.async</code> family of instructions, which allow a warp to asynchronously transfer memory from DRAM to SMEM (one-way), bypassing the registerfile without blocking. Note that <code>cp.async</code> requires every thread in a block to cooperatively load a tile into SMEM, unlike TMA. Still, this instruction will come in handy, as we can asynchronously load the next tile of data into a circular SMEM buffer while the current tile is being processed to keep compute units busy.</p>
 <p>We use a similar pipelining technique when moving data to the registerfile from SMEM. We allocate 2 &ldquo;$K$-slices&rdquo; worth of operand data (or as we will call them — blocks) from $A, B$ and have each register-backed buffer ping-pong between compute and reading the next blocks from SMEM. This diagram from NVIDIA outlines the approach well:</p>
 <p>
 <figure class="image-figure not-prose my-8" 
@@ -1396,8 +1403,8 @@ document.addEventListener('DOMContentLoaded', function() {
     data-gallery-title="" /></div>
 
   </figure></p>
-<h2 id="the-kernel">the kernel</h2>
-<p>With all that being said, let&rsquo;s actually write the kernel! We&rsquo;ll hand off most of the indexing calculations to CuTe to deal with at compile-time, so that we can save some of our precious registers. We&rsquo;ll start with the necessary setup on host-side. This will be a <code>nn</code> kernel, where both inputs are not transposed and expected to be in column-major format.</p>
+<h2 id="host-side-setup">host-side setup</h2>
+<p>With all that being said, let&rsquo;s setup the kernel! We&rsquo;ll hand off most of the indexing calculations to CuTe to deal with at compile-time, so that we can save some of our precious registers. We&rsquo;ll start with the necessary setup on host-side. This will be a <code>nn</code> kernel, where both inputs are not transposed and expected to be in column-major format.</p>
 <div
   class="code-block-container border-border bg-card my-6 overflow-hidden rounded-xl border shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">
   
@@ -1705,12 +1712,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 })();
 </script>
-<p>We define the SMEM tiling shapes for $A, B$ to be $128 \times 32$, and the strides for their entire tensors in DRAM to be column-major. The DRAM and SMEM $B$ tile shapes are $(N, K)$ rather than the usual $(K, N)$ to consistently keep the reduction mode $K$ on the right, like $A$. For the SMEM tiles, we&rsquo;ll use a 3-stage circular buffer for both. To use the widest granularity for reads/writes (i.e. 128-bits), both SMEM tiles should also be in column-major. Wider reads and writes lower instruction count and <em>generally</em> improve performance.</p>
+<p>We define the SMEM tiling shapes for $A, B$ to be $128 \times 32$, and the strides for their entire tensors in DRAM to be column-major. The DRAM and SMEM $B$ tile shapes are $(N, K)$ rather than the usual $(K, N)$ to consistently keep the reduction mode $K$ on the right, like $A$, which is $(M, K)$. For the SMEM tiles, we&rsquo;ll use a 3-stage circular buffer for both. To use the widest granularity for reads/writes (i.e. 128-bits), both SMEM tiles should also be in column-major. Wider reads and writes lower instruction count and <em>generally</em> improve performance.</p>
 
   <blockquote
     class="border-primary bg-muted/30 hover:bg-muted/40 my-6 rounded-r-lg border-l-4 py-4 pr-4 pl-6 italic transition-all duration-200 ease-out hover:translate-x-1">
     <div class="prose prose-sm max-w-none">
-      <p><code>cp.async</code> can move memory at 4-byte, 8-byte, and 16-byte granularities. Furthermore, reads AND writes must strictly be to contiguous chunks of memory, unlike with the standard vector (e.g. <code>float2</code>, <code>int4</code>, etc.) types. For the $B$ matrix, some <code>nn</code> GEMM implementations read 16 contiguous bytes from DRAM and chunk it into 4 discontiguous 32-byte writes to SMEM to transpose it to enforce a stride-1 along the $N$-axis instead of $K$. This allows for 16-byte reads from SMEM to the registerfile later. Thus, we unfortunately cannot do something similar here.</p>
+      <p><code>cp.async</code> can move memory at 4-byte, 8-byte, and 16-byte granularities. Furthermore, reads AND writes must strictly be to contiguous chunks of memory, unlike with the standard vectorized loads. For the $B$ matrix, some <code>nn</code> GEMM implementations read 16 contiguous bytes from DRAM and chunk it into 4 discontiguous 32-byte writes to SMEM to transpose it to enforce a stride-1 along the $N$-axis instead of $K$. This allows for 16-byte reads from SMEM to the registerfile later. Thus, we unfortunately cannot do something similar here.</p>
 
     </div>
   </blockquote><script>
@@ -2155,7 +2162,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <p>Setting up the tiled MMA and copy objects, there&rsquo;s a bit of boilerplate code needed.</p>
 <p><code>make_tiled_copy</code> allows us to arrange a group of threads with a certain layout and assign a group of elements for each thread to be responsible for. We wrap a <code>CopyTraits</code> object to use the SM80 <code>cp.async.cg.shared.global.L2::128B</code> instruction with a read granularity of 128-bits = 16-bytes. The <code>CopyAtom</code> then takes this <code>CopyTraits</code> and the actual dtype to be used.</p>
 <p>The layout of the threads for $A$ is $(32 \times 8)$ in column-major, with each thread responsible for 4 column-major elements, whereas for $B$ both are in row-major arrangement. It is very important to write correct layouts for any problem to ensure read-write access patterns that we actually intended (CuTe will also statically fail if given an impossible access pattern).</p>
-<p>A good way to start writing these is to write out the ideal case, or what we&rsquo;d expect the tiling to be. To coalesce 128-byte DRAM reads and use thread-local 16-byte loads, there should be a stride of 1 between each thread&rsquo;s 4 <code>fp32</code>s and stride of 4 between threads. For example, visualizing the layout for $A$:</p>
+<p>A good way to start writing these is to write out the ideal case, or what we&rsquo;d expect the tiling to be. To coalesce 128-byte DRAM reads and use thread-local 16-byte loads, there should be a stride of 1 between each thread&rsquo;s 4 <code>fp32</code>s and stride of 4 between threads.</p>
 <p>
 <figure class="image-figure not-prose my-8" 
         data-lightbox-enabled="false"
@@ -2164,15 +2171,17 @@ document.addEventListener('DOMContentLoaded', function() {
     <img
     src="/images/posts/sm86_gemm/partition.png"
     alt="a partition"
-    
+    title="Visualizing the layout for $A$ (not to scale, some values omitted)"
     
     loading="lazy"
     decoding="async"
     data-gallery-src="/images/posts/sm86_gemm/partition.png"
     data-gallery-alt="a partition"
-    data-gallery-title="" /></div>
+    data-gallery-title="Visualizing the layout for $A$ (not to scale, some values omitted)" /></div>
 
-  </figure></p>
+  <figcaption class="image-caption">
+      Visualizing the layout for $A$ (not to scale, some values omitted)
+    </figcaption></figure></p>
 <p>Above is an ideal partitioning of the destination tensor. We can see <em>some</em> values mapped to Thread 0 in pink. The green represents the first 4 values mapped to Thread 1. Thread 2&rsquo;s values would be right below, and so on, tiling in column-major order. The blue represents the actual stride required in physical linear memory to jump to the next value. The stride-1 between each value within the 4-value blocks allow us to use the wide 16-byte instructions. This layout also maximally coalesces GMEM (global memory) transactions.</p>
 <div
     class="alert alert-important my-6 overflow-hidden rounded-lg transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md"
@@ -2559,7 +2568,7 @@ $$</p>
   }
 })();
 </script>
-<p>Corresponding each term to what we saw, we see that this tiled copy uses 256 threads, where each thread is mapped to 4 values local to a copy atom (16-byte <code>cp.async</code> atom = 4x <code>fp32</code>), 4 values tiled across the K-mode, and 3 values tiled across the shared memory&rsquo;s 3 stages, matching our earlier visualization. As a side note, the layouts from <code>tidfrg</code> are sliced out by each thread by slicing the <code>Thr</code>-mode with the thread index within the actual kernel.</p>
+<p>Corresponding each term to what we saw, we see that this tiled copy uses 256 threads, where each thread is mapped to 4 values local to a copy atom (16-byte <code>cp.async</code> atom = 4x <code>fp32</code>), 4 values tiled across the K-mode, and 3 values tiled across the shared memory&rsquo;s 3 stages, matching our earlier visualization. Internally, <code>partition_X</code> uses the layouts from <code>tidfrg</code> by indexing the <code>Thr</code>-mode with the thread index in the actual kernel.</p>
 <div
     class="alert alert-important my-6 overflow-hidden rounded-lg transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md"
     style="background-color: color-mix(in srgb, var(--color-important) 10%, transparent);
@@ -2593,6 +2602,1361 @@ $$</p>
       <div class="prose prose-sm text-foreground/90 max-w-none">
         <p>You may be asking how we chose the number of threads to use. GPUs have constrained on-chip memory sizes. For compute-bound problems, we typically prefer loading larger tile sizes to faster on-chip memory since data reuse is high. Fetching data from HBM once for larger tiles and reusing it from shared memory or registers helps amortize that memory latency across more arithmetic operations.</p>
 <p>However, this comes at a price — heavier on-chip memory usage reduces occupancy, the number of warps (group of 32 threads) resident on an SM. Fewer warps means the scheduler may not be able to switch to another warp when one is &ldquo;blocked&rdquo;, potentially preventing latency hiding. This occupancy vs. arithmetic intensity tradeoff is an important concept that informs us of a kernel&rsquo;s optimal launch configuration.</p>
+      </div>
+    </div>
+  </div><script>
+function toggleAlert(alertId) {
+  const content = document.getElementById(alertId + '-content');
+  const chevron = document.getElementById(alertId + '-chevron');
+  const header = content.previousElementSibling;
+  
+  if (content.classList.contains('hidden')) {
+    content.classList.remove('hidden');
+    chevron.style.transform = 'rotate(0deg)';
+    header.setAttribute('aria-expanded', 'true');
+  } else {
+    content.classList.add('hidden');
+    chevron.style.transform = 'rotate(-90deg)';
+    header.setAttribute('aria-expanded', 'false');
+  }
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+  const collapsedAlerts = document.querySelectorAll('.alert-content.hidden');
+  collapsedAlerts.forEach(function(content) {
+    const alertId = content.id.replace('-content', '');
+    const chevron = document.getElementById(alertId + '-chevron');
+    if (chevron) {
+      chevron.style.transform = 'rotate(-90deg)';
+    }
+  });
+});
+</script>
+
+<p>Lastly, we set up a <code>TiledMMA</code> object, which assigns threads to values for matrix-multiply accumulation (MMA). Similar to <code>TiledCopy</code>, it takes an <code>MMA_Trait</code> wrapping an <code>MMA_Atom</code>, which defines the smallest &ldquo;unit&rdquo; of computation to be tiled. This allows for easy partitioning of the operand $A$ and $B$ matrices and register allocation for the product $C$ fragment. Since our operands are in <code>fp32</code>, which don&rsquo;t have tensor core support, we use the <code>UniversalFMA&lt;float&gt;</code> atom here. But, for example, if our operands were to be in half-precision, we&rsquo;d want to use an atom like <code>SM80_16x8x16_F16F16F16F16_TN</code> that wraps a tensor core (TC) instruction.</p>
+<p>Each of these atoms intrinsically involve a different number of threads. For FMA, it&rsquo;s just 1 thread performing a scalar computation. Ampere TC instructions are at warp-level; they require a warp to cooperatively compute a small matrix product, while Hopper TCs involve a warpgroup (4 warps) and so on. We&rsquo;ll focus on the simple FMA case.</p>
+<p>Suppose that after we&rsquo;ve done some tuning, we decide to use 256 threads in our kernel. Of course, writing a kernel for first time, you wouldn&rsquo;t know the optimal number of threads, but 128 or 256 threads tend to be good starting points for GEMMs. With each thread computing 1 scalar fragment of $C$, a threadblock of 256 threads can independently compute 256 $C$ values &ldquo;per atom&rdquo;. For simplicity (and other reasons we&rsquo;ll later see), we&rsquo;ll arrange the atom&rsquo;s 256 values to compute a $(16 \times 16)$ fragment of $C$.</p>
+<p>
+<figure class="image-figure not-prose my-8" 
+        data-lightbox-enabled="false"
+        data-gallery-type="auto">
+  <div class="image-container">
+    <img
+    src="/images/posts/sm86_gemm/c-mma.png"
+    alt="c-mma"
+    title="`print_latex` helps us visualize the atom. Each thread computes 1 scalar product and accumulates to its 1 fragment register."
+    
+    loading="lazy"
+    decoding="async"
+    data-gallery-src="/images/posts/sm86_gemm/c-mma.png"
+    data-gallery-alt="c-mma"
+    data-gallery-title="`print_latex` helps us visualize the atom. Each thread computes 1 scalar product and accumulates to its 1 fragment register." /></div>
+
+  <figcaption class="image-caption">
+      <code>print_latex</code> helps us visualize the atom. Each thread computes 1 scalar product and accumulates to its 1 fragment register.
+    </figcaption></figure></p>
+<p>You may be asking: &ldquo;But I thought our setup was for each threadblock to accumulate a $(128 \times 128)$ tile of $C$?&rdquo; <code>TiledMMA</code> exposes similar methods to <code>TiledCopy</code>, where we can partition an arbitrarily-sized input tensor according to this smaller atom layout. In other words, it replicates the atom across given matrices. Partitioning a $(128 \times 128)$ tile of $C$ thus results in an $(8 \times 8)$ tile of atoms. There is also <code>thrfrg</code>, which is the MMA equivalent to the <code>tidfrg</code> from <code>TiledCopy</code> we saw earlier. Printing <code>thrfrg_C(gC).shape</code>:</p>
+<p>$$
+((1, (16, 16)), (1, (8, 8)))
+$$</p>
+<p>And again, looking at the source code comments:</p>
+<div
+  class="code-block-container border-border bg-card my-6 overflow-hidden rounded-xl border shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">
+  
+  <div
+    class="code-block-header bg-muted/30 border-border flex items-center justify-between border-b px-4 py-3">
+    
+    <div class="flex items-center gap-2">
+      <div class="text-muted-foreground flex-shrink-0">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+</svg>
+      </div>
+      <span class="text-muted-foreground text-sm font-medium">
+        C&#43;&#43;
+      </span>
+    </div>
+
+    
+    <div class="flex items-center gap-2">
+      <button
+          class="collapse-code-btn text-muted-foreground hover:text-primary hover:bg-primary/10 focus:ring-primary/20 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ease-out focus:ring-2 focus:outline-none"
+          data-code-id="code-4"
+          data-default-state="expanded"
+          data-collapsed="false"
+          data-auto-collapse-lines="30"
+          data-auto-collapse-height="400"
+          data-collapsed-height="120"
+          title="Collapse"
+          aria-label="Collapse">
+          <span class="collapse-icon">
+            <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6l-6 6z"/></svg>
+          </span>
+          <span class="collapse-text hidden sm:inline"
+            >Collapse</span
+          >
+        </button>
+      <button
+        class="copy-code-btn text-muted-foreground hover:text-primary hover:bg-primary/10 focus:ring-primary/20 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ease-out focus:ring-2 focus:outline-none"
+        data-code-id="code-4"
+        title="Copy"
+        aria-label="Copy">
+        <span class="copy-icon">
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+</svg>
+        </span>
+        <span class="copy-text hidden sm:inline"
+          >Copy</span
+        >
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="code-block-content relative" id="code-4">
+    <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c++" data-lang="c++"><span class="line"><span class="cl"><span class="c1">// Tile a tensor or a layout from shape
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   (M,N,...)
+</span></span></span><span class="line"><span class="cl"><span class="c1">// to shape
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   ((ThrV,(ThrM,ThrN)),(FrgV,(RestM,RestN,...)))
+</span></span></span><span class="line"><span class="cl"><span class="c1">// where
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   ThrV:  The threads local to an MMA. layout&lt;0&gt;(ThrLayoutVMNK): ThrV -&gt; thread_idx
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   ThrM:  The threads tiled in M.      layout&lt;1&gt;(ThrLayoutVMNK): ThrM -&gt; thread_idx
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   ThrN:  The threads tiled in N.      layout&lt;2&gt;(ThrLayoutVMNK): ThrN -&gt; thread_idx
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   FrgV:  The values local to an MMA.
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   RestM: The values tiled in M.
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   RestN: The values tiled in N.
+</span></span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="nf">thrfrg_C</span><span class="p">(</span><span class="n">CTensor</span><span class="o">&amp;&amp;</span> <span class="n">ctensor</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="p">...</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+    
+    <div
+      class="collapse-overlay to-card/90 pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent opacity-0 transition-opacity duration-300">
+      <div
+        class="text-muted-foreground bg-card/80 border-border/50 hover:bg-primary/10 hover:text-primary hover:border-primary/30 absolute bottom-4 left-1/2 -translate-x-1/2 cursor-pointer rounded-full border px-3 py-1.5 text-xs backdrop-blur-sm transition-all duration-200">
+        Click to expand and view more
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+(function() {
+  const codeId = 'code-4';
+  const copyBtn = document.querySelector('.copy-code-btn[data-code-id="' + codeId + '"]');
+  const collapseBtn = document.querySelector('.collapse-code-btn[data-code-id="' + codeId + '"]');
+  const codeContainer = document.getElementById(codeId);
+
+  if (!codeContainer) return;
+
+  
+  if (copyBtn) {
+    const copyIcon = copyBtn.querySelector('.copy-icon');
+    const copyText = copyBtn.querySelector('.copy-text');
+
+    copyBtn.addEventListener('click', async function() {
+      try {
+        
+        let codeText = '';
+
+        
+        const codeTableCell = codeContainer.querySelector('.lntd:last-child code');
+        if (codeTableCell) {
+          codeText = codeTableCell.textContent || codeTableCell.innerText;
+        } else {
+          
+          const codeElement = codeContainer.querySelector('code');
+          if (codeElement) {
+            
+            const hasInlineLineNumbers = codeElement.querySelector('.ln');
+            if (hasInlineLineNumbers) {
+              
+              const codeLines = codeElement.querySelectorAll('.cl');
+              if (codeLines.length > 0) {
+                codeText = Array.from(codeLines)
+                  .map(line => {
+                    const text = line.textContent || line.innerText;
+                    
+                    return text.replace(/\n+$/, '');
+                  })
+                  .join('\n')
+                  .replace(/\n+$/, ''); 
+              } else {
+                
+                const allText = codeElement.textContent || codeElement.innerText;
+                codeText = allText.replace(/^\d+/gm, '').replace(/^\s+/gm, '');
+              }
+            } else {
+              
+              codeText = codeElement.textContent || codeElement.innerText;
+            }
+          } else {
+            
+            codeText = codeContainer.textContent || codeContainer.innerText;
+          }
+        }
+
+        
+        codeText = codeText.trim();
+
+        
+        await navigator.clipboard.writeText(codeText);
+
+        
+        copyIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M5 13l4 4L19 7\u0022 \/\u003e\n\u003c\/svg\u003e`;
+        if (copyText) {
+          copyText.textContent = 'Copied';
+        }
+        copyBtn.classList.add('text-green-600');
+
+        
+        setTimeout(() => {
+          copyIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\u0022 \/\u003e\n\u003c\/svg\u003e`;
+          if (copyText) {
+            copyText.textContent = 'Copy';
+          }
+          copyBtn.classList.remove('text-green-600');
+        }, 2000);
+
+      } catch (err) {
+        console.error('复制失败:', err);
+
+        
+        const range = document.createRange();
+        const codeElement = codeContainer.querySelector('code') || codeContainer;
+        range.selectNodeContents(codeElement);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        
+        if (copyText) {
+          copyText.textContent = 'Selected';
+        }
+
+        setTimeout(() => {
+          if (copyText) {
+            copyText.textContent = 'Copy';
+          }
+          selection.removeAllRanges();
+        }, 2000);
+      }
+    });
+  }
+
+  
+  if (collapseBtn) {
+    const collapseIcon = collapseBtn.querySelector('.collapse-icon');
+    const collapseText = collapseBtn.querySelector('.collapse-text');
+    const collapseOverlay = codeContainer.querySelector('.collapse-overlay');
+
+    
+    let codeElement = codeContainer.querySelector('pre.chroma');
+    if (!codeElement) {
+      codeElement = codeContainer.querySelector('pre');
+    }
+
+    const defaultState = collapseBtn.dataset.defaultState || 'expanded';
+    const isCollapsedAttr = collapseBtn.dataset.collapsed === 'true';
+    const autoCollapseLines = parseInt(collapseBtn.dataset.autoCollapseLines) || 30;
+    const autoCollapseHeight = parseInt(collapseBtn.dataset.autoCollapseHeight) || 400;
+    const collapsedHeight = parseInt(collapseBtn.dataset.collapsedHeight) || 120;
+
+    let isCollapsed = false;
+
+    
+    function initCollapse() {
+      
+      const shouldCollapse = isCollapsedAttr ||
+                           defaultState === 'collapsed' ||
+                           shouldAutoCollapse();
+
+      if (shouldCollapse) {
+        setCollapsed(true, false); 
+      }
+    }
+
+    function shouldAutoCollapse() {
+      
+      if (codeElement) {
+        const lines = codeElement.querySelectorAll('.line, .cl');
+        const height = codeElement.offsetHeight;
+        return lines.length > autoCollapseLines || height > autoCollapseHeight;
+      }
+
+      
+      const containerHeight = codeContainer.offsetHeight;
+      if (containerHeight > autoCollapseHeight) {
+        return true;
+      }
+
+      
+      const textContent = codeContainer.textContent || codeContainer.innerText || '';
+      const estimatedLines = textContent.split('\n').length;
+      return estimatedLines > autoCollapseLines;
+    }
+
+    function setCollapsed(collapsed, animate = true) {
+      if (!collapseOverlay) return;
+
+      isCollapsed = collapsed;
+
+      if (collapsed) {
+        
+        codeContainer.style.maxHeight = collapsedHeight + 'px';
+        codeContainer.style.overflow = 'hidden';
+        collapseOverlay.style.opacity = '1';
+        collapseOverlay.style.pointerEvents = 'auto';
+
+        
+        collapseIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M19 9l-7 7-7-7\u0022 \/\u003e\n\u003c\/svg\u003e`;
+        if (collapseText) {
+          collapseText.textContent = 'Expand';
+        }
+        collapseBtn.title = 'Expand';
+
+      } else {
+        
+        codeContainer.style.maxHeight = '';
+        codeContainer.style.overflow = '';
+        collapseOverlay.style.opacity = '0';
+        collapseOverlay.style.pointerEvents = 'none';
+
+        
+        collapseIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022 viewBox=\u00220 0 24 24\u0022\u003e\u003cpath fill=\u0022currentColor\u0022 d=\u0022M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6l-6 6z\u0022\/\u003e\u003c\/svg\u003e`;
+        if (collapseText) {
+          collapseText.textContent = 'Collapse';
+        }
+        collapseBtn.title = 'Collapse';
+      }
+
+      
+      if (animate) {
+        codeContainer.style.transition = 'max-height 0.3s ease-out';
+        setTimeout(() => {
+          codeContainer.style.transition = '';
+        }, 300);
+      }
+    }
+
+    function toggleCollapse() {
+      setCollapsed(!isCollapsed, true);
+    }
+
+    
+    collapseBtn.addEventListener('click', toggleCollapse);
+
+    
+    if (collapseOverlay) {
+      collapseOverlay.addEventListener('click', () => {
+        if (isCollapsed) {
+          setCollapsed(false, true);
+        }
+      });
+    }
+
+    
+    initCollapse();
+  }
+})();
+</script>
+<p>We see that there is exactly 1 thread and 1 value local to the MMA atom, and 16 threads tiled in the M- and N-modes. To cover the entire product, there then must be 8 values tiled in the M- and N-modes too, meaning the $C$ fragment alone requires 64× 32-bit registers per thread. Let&rsquo;s look at <code>thrfrg_A</code> now:</p>
+<p>$$
+((1,(16,1)),(1,(8,32,3)))
+$$</p>
+<h2 id="device-side-setup">device-side setup</h2>
+<div
+  class="code-block-container border-border bg-card my-6 overflow-hidden rounded-xl border shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">
+  
+  <div
+    class="code-block-header bg-muted/30 border-border flex items-center justify-between border-b px-4 py-3">
+    
+    <div class="flex items-center gap-2">
+      <div class="text-muted-foreground flex-shrink-0">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+</svg>
+      </div>
+      <span class="text-muted-foreground text-sm font-medium">
+        C&#43;&#43;
+      </span>
+    </div>
+
+    
+    <div class="flex items-center gap-2">
+      <button
+          class="collapse-code-btn text-muted-foreground hover:text-primary hover:bg-primary/10 focus:ring-primary/20 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ease-out focus:ring-2 focus:outline-none"
+          data-code-id="code-5"
+          data-default-state="expanded"
+          data-collapsed="false"
+          data-auto-collapse-lines="30"
+          data-auto-collapse-height="400"
+          data-collapsed-height="120"
+          title="Collapse"
+          aria-label="Collapse">
+          <span class="collapse-icon">
+            <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6l-6 6z"/></svg>
+          </span>
+          <span class="collapse-text hidden sm:inline"
+            >Collapse</span
+          >
+        </button>
+      <button
+        class="copy-code-btn text-muted-foreground hover:text-primary hover:bg-primary/10 focus:ring-primary/20 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ease-out focus:ring-2 focus:outline-none"
+        data-code-id="code-5"
+        title="Copy"
+        aria-label="Copy">
+        <span class="copy-icon">
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+</svg>
+        </span>
+        <span class="copy-text hidden sm:inline"
+          >Copy</span
+        >
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="code-block-content relative" id="code-5">
+    <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c++" data-lang="c++"><span class="line"><span class="cl"><span class="c1">// cta_shape is (Tile M, Tile N, Tile K) = (128, 128, 32)
+</span></span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">mA</span> <span class="o">=</span> <span class="n">make_tensor</span><span class="p">(</span><span class="n">make_gmem_ptr</span><span class="p">(</span><span class="n">A</span><span class="p">),</span> <span class="n">make_layout</span><span class="p">(</span><span class="n">make_shape</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">k</span><span class="p">),</span> <span class="n">stride_A</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">mB</span> <span class="o">=</span> <span class="n">make_tensor</span><span class="p">(</span><span class="n">make_gmem_ptr</span><span class="p">(</span><span class="n">B</span><span class="p">),</span> <span class="n">make_layout</span><span class="p">(</span><span class="n">make_shape</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">k</span><span class="p">),</span> <span class="n">stride_B</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">mC</span> <span class="o">=</span> <span class="n">make_tensor</span><span class="p">(</span><span class="n">make_gmem_ptr</span><span class="p">(</span><span class="n">C</span><span class="p">),</span> <span class="n">make_layout</span><span class="p">(</span><span class="n">make_shape</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">stride_C</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">coord</span> <span class="o">=</span> <span class="n">make_coord</span><span class="p">(</span><span class="n">blockIdx</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">blockIdx</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">_</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">gA</span> <span class="o">=</span> <span class="n">local_tile</span><span class="p">(</span><span class="n">mA</span><span class="p">,</span> <span class="n">cta_shape</span><span class="p">,</span> <span class="n">coord</span><span class="p">,</span> <span class="n">Step</span><span class="o">&lt;</span><span class="n">_1</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">_1</span><span class="o">&gt;</span><span class="p">{});</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">gB</span> <span class="o">=</span> <span class="n">local_tile</span><span class="p">(</span><span class="n">mB</span><span class="p">,</span> <span class="n">cta_shape</span><span class="p">,</span> <span class="n">coord</span><span class="p">,</span> <span class="n">Step</span><span class="o">&lt;</span><span class="n">X</span><span class="p">,</span> <span class="n">_1</span><span class="p">,</span> <span class="n">_1</span><span class="o">&gt;</span><span class="p">{});</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">gC</span> <span class="o">=</span> <span class="n">local_tile</span><span class="p">(</span><span class="n">mC</span><span class="p">,</span> <span class="n">cta_shape</span><span class="p">,</span> <span class="n">coord</span><span class="p">,</span> <span class="n">Step</span><span class="o">&lt;</span><span class="n">_1</span><span class="p">,</span> <span class="n">_1</span><span class="p">,</span> <span class="n">X</span><span class="o">&gt;</span><span class="p">{});</span></span></span></code></pre></div>
+    
+    <div
+      class="collapse-overlay to-card/90 pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent opacity-0 transition-opacity duration-300">
+      <div
+        class="text-muted-foreground bg-card/80 border-border/50 hover:bg-primary/10 hover:text-primary hover:border-primary/30 absolute bottom-4 left-1/2 -translate-x-1/2 cursor-pointer rounded-full border px-3 py-1.5 text-xs backdrop-blur-sm transition-all duration-200">
+        Click to expand and view more
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+(function() {
+  const codeId = 'code-5';
+  const copyBtn = document.querySelector('.copy-code-btn[data-code-id="' + codeId + '"]');
+  const collapseBtn = document.querySelector('.collapse-code-btn[data-code-id="' + codeId + '"]');
+  const codeContainer = document.getElementById(codeId);
+
+  if (!codeContainer) return;
+
+  
+  if (copyBtn) {
+    const copyIcon = copyBtn.querySelector('.copy-icon');
+    const copyText = copyBtn.querySelector('.copy-text');
+
+    copyBtn.addEventListener('click', async function() {
+      try {
+        
+        let codeText = '';
+
+        
+        const codeTableCell = codeContainer.querySelector('.lntd:last-child code');
+        if (codeTableCell) {
+          codeText = codeTableCell.textContent || codeTableCell.innerText;
+        } else {
+          
+          const codeElement = codeContainer.querySelector('code');
+          if (codeElement) {
+            
+            const hasInlineLineNumbers = codeElement.querySelector('.ln');
+            if (hasInlineLineNumbers) {
+              
+              const codeLines = codeElement.querySelectorAll('.cl');
+              if (codeLines.length > 0) {
+                codeText = Array.from(codeLines)
+                  .map(line => {
+                    const text = line.textContent || line.innerText;
+                    
+                    return text.replace(/\n+$/, '');
+                  })
+                  .join('\n')
+                  .replace(/\n+$/, ''); 
+              } else {
+                
+                const allText = codeElement.textContent || codeElement.innerText;
+                codeText = allText.replace(/^\d+/gm, '').replace(/^\s+/gm, '');
+              }
+            } else {
+              
+              codeText = codeElement.textContent || codeElement.innerText;
+            }
+          } else {
+            
+            codeText = codeContainer.textContent || codeContainer.innerText;
+          }
+        }
+
+        
+        codeText = codeText.trim();
+
+        
+        await navigator.clipboard.writeText(codeText);
+
+        
+        copyIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M5 13l4 4L19 7\u0022 \/\u003e\n\u003c\/svg\u003e`;
+        if (copyText) {
+          copyText.textContent = 'Copied';
+        }
+        copyBtn.classList.add('text-green-600');
+
+        
+        setTimeout(() => {
+          copyIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\u0022 \/\u003e\n\u003c\/svg\u003e`;
+          if (copyText) {
+            copyText.textContent = 'Copy';
+          }
+          copyBtn.classList.remove('text-green-600');
+        }, 2000);
+
+      } catch (err) {
+        console.error('复制失败:', err);
+
+        
+        const range = document.createRange();
+        const codeElement = codeContainer.querySelector('code') || codeContainer;
+        range.selectNodeContents(codeElement);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        
+        if (copyText) {
+          copyText.textContent = 'Selected';
+        }
+
+        setTimeout(() => {
+          if (copyText) {
+            copyText.textContent = 'Copy';
+          }
+          selection.removeAllRanges();
+        }, 2000);
+      }
+    });
+  }
+
+  
+  if (collapseBtn) {
+    const collapseIcon = collapseBtn.querySelector('.collapse-icon');
+    const collapseText = collapseBtn.querySelector('.collapse-text');
+    const collapseOverlay = codeContainer.querySelector('.collapse-overlay');
+
+    
+    let codeElement = codeContainer.querySelector('pre.chroma');
+    if (!codeElement) {
+      codeElement = codeContainer.querySelector('pre');
+    }
+
+    const defaultState = collapseBtn.dataset.defaultState || 'expanded';
+    const isCollapsedAttr = collapseBtn.dataset.collapsed === 'true';
+    const autoCollapseLines = parseInt(collapseBtn.dataset.autoCollapseLines) || 30;
+    const autoCollapseHeight = parseInt(collapseBtn.dataset.autoCollapseHeight) || 400;
+    const collapsedHeight = parseInt(collapseBtn.dataset.collapsedHeight) || 120;
+
+    let isCollapsed = false;
+
+    
+    function initCollapse() {
+      
+      const shouldCollapse = isCollapsedAttr ||
+                           defaultState === 'collapsed' ||
+                           shouldAutoCollapse();
+
+      if (shouldCollapse) {
+        setCollapsed(true, false); 
+      }
+    }
+
+    function shouldAutoCollapse() {
+      
+      if (codeElement) {
+        const lines = codeElement.querySelectorAll('.line, .cl');
+        const height = codeElement.offsetHeight;
+        return lines.length > autoCollapseLines || height > autoCollapseHeight;
+      }
+
+      
+      const containerHeight = codeContainer.offsetHeight;
+      if (containerHeight > autoCollapseHeight) {
+        return true;
+      }
+
+      
+      const textContent = codeContainer.textContent || codeContainer.innerText || '';
+      const estimatedLines = textContent.split('\n').length;
+      return estimatedLines > autoCollapseLines;
+    }
+
+    function setCollapsed(collapsed, animate = true) {
+      if (!collapseOverlay) return;
+
+      isCollapsed = collapsed;
+
+      if (collapsed) {
+        
+        codeContainer.style.maxHeight = collapsedHeight + 'px';
+        codeContainer.style.overflow = 'hidden';
+        collapseOverlay.style.opacity = '1';
+        collapseOverlay.style.pointerEvents = 'auto';
+
+        
+        collapseIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M19 9l-7 7-7-7\u0022 \/\u003e\n\u003c\/svg\u003e`;
+        if (collapseText) {
+          collapseText.textContent = 'Expand';
+        }
+        collapseBtn.title = 'Expand';
+
+      } else {
+        
+        codeContainer.style.maxHeight = '';
+        codeContainer.style.overflow = '';
+        collapseOverlay.style.opacity = '0';
+        collapseOverlay.style.pointerEvents = 'none';
+
+        
+        collapseIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022 viewBox=\u00220 0 24 24\u0022\u003e\u003cpath fill=\u0022currentColor\u0022 d=\u0022M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6l-6 6z\u0022\/\u003e\u003c\/svg\u003e`;
+        if (collapseText) {
+          collapseText.textContent = 'Collapse';
+        }
+        collapseBtn.title = 'Collapse';
+      }
+
+      
+      if (animate) {
+        codeContainer.style.transition = 'max-height 0.3s ease-out';
+        setTimeout(() => {
+          codeContainer.style.transition = '';
+        }, 300);
+      }
+    }
+
+    function toggleCollapse() {
+      setCollapsed(!isCollapsed, true);
+    }
+
+    
+    collapseBtn.addEventListener('click', toggleCollapse);
+
+    
+    if (collapseOverlay) {
+      collapseOverlay.addEventListener('click', () => {
+        if (isCollapsed) {
+          setCollapsed(false, true);
+        }
+      });
+    }
+
+    
+    initCollapse();
+  }
+})();
+</script>
+<p>This code is boilerplate for GEMMs. We first create the dynamically-shaped global memory tensors. To &ldquo;assign&rdquo; each $(M, N)$ tile coord to threadblocks, we create a <code>Coord</code> object based on block index, and use the <code>local_tile</code> API. Internally, this function is a wrapper on top of <code>zipped_divide</code> that take <code>Coord</code> and <code>Step</code> objects, which specify which tile coord we want to slice out and which modes we want to keep/discard, respectively. Notice the <code>X</code> in the <code>Step</code> object, which means that the corresponding mode in the <code>cta_shape</code> divisor is dropped. Since it&rsquo;s of shape $(\text{Tile M, Tile N, Tile K})$, we specify the <code>X</code> at mode-1 for $A$ and mode-0 for $B$.</p>
+<p>For example, for <code>gA</code>, this means we index mode-0 of the &ldquo;quotient&rdquo; tensor of shape $\left(\frac{M}{\text{Tile M}}, \frac{K}{\text{Tile K}}\right)$ by <code>blockIdx.y</code> and keep all of mode-1, since each block does a reduction along the K-mode. Thus, we set <code>Coord</code> to <code>(blockIdx.y, blockIdx.x, _)</code> — <em>in CuTe syntax, an underscore indicates we keep all of that mode.</em> This results in <code>gA</code> and <code>gB</code> of shape $(128, K)$.</p>
+<p>
+<figure class="image-figure not-prose my-8" 
+        data-lightbox-enabled="false"
+        data-gallery-type="auto">
+  <div class="image-container">
+    <img
+    src="/images/posts/sm86_gemm/block-tile.png"
+    alt="threadblock-partitioning"
+    title="A visual of threadblock partitioning (not to scale)"
+    
+    loading="lazy"
+    decoding="async"
+    data-gallery-src="/images/posts/sm86_gemm/block-tile.png"
+    data-gallery-alt="threadblock-partitioning"
+    data-gallery-title="A visual of threadblock partitioning (not to scale)" /></div>
+
+  <figcaption class="image-caption">
+      A visual of threadblock partitioning (not to scale)
+    </figcaption></figure></p>
+<div
+  class="code-block-container border-border bg-card my-6 overflow-hidden rounded-xl border shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">
+  
+  <div
+    class="code-block-header bg-muted/30 border-border flex items-center justify-between border-b px-4 py-3">
+    
+    <div class="flex items-center gap-2">
+      <div class="text-muted-foreground flex-shrink-0">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+</svg>
+      </div>
+      <span class="text-muted-foreground text-sm font-medium">
+        C&#43;&#43;
+      </span>
+    </div>
+
+    
+    <div class="flex items-center gap-2">
+      <button
+          class="collapse-code-btn text-muted-foreground hover:text-primary hover:bg-primary/10 focus:ring-primary/20 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ease-out focus:ring-2 focus:outline-none"
+          data-code-id="code-6"
+          data-default-state="expanded"
+          data-collapsed="false"
+          data-auto-collapse-lines="30"
+          data-auto-collapse-height="400"
+          data-collapsed-height="120"
+          title="Collapse"
+          aria-label="Collapse">
+          <span class="collapse-icon">
+            <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6l-6 6z"/></svg>
+          </span>
+          <span class="collapse-text hidden sm:inline"
+            >Collapse</span
+          >
+        </button>
+      <button
+        class="copy-code-btn text-muted-foreground hover:text-primary hover:bg-primary/10 focus:ring-primary/20 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ease-out focus:ring-2 focus:outline-none"
+        data-code-id="code-6"
+        title="Copy"
+        aria-label="Copy">
+        <span class="copy-icon">
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+</svg>
+        </span>
+        <span class="copy-text hidden sm:inline"
+          >Copy</span
+        >
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="code-block-content relative" id="code-6">
+    <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c++" data-lang="c++"><span class="line"><span class="cl"><span class="k">extern</span> <span class="n">__shared__</span> <span class="kt">float</span> <span class="n">smem_buffer</span><span class="p">[];</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">sA</span> <span class="o">=</span> <span class="n">make_tensor</span><span class="p">(</span><span class="n">make_smem_ptr</span><span class="p">(</span><span class="o">&amp;</span><span class="n">smem_buffer</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">sA_layout</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">sB</span> <span class="o">=</span> <span class="n">make_tensor</span><span class="p">(</span><span class="n">make_smem_ptr</span><span class="p">(</span><span class="o">&amp;</span><span class="n">smem_buffer</span><span class="p">[</span><span class="n">cosize_v</span><span class="o">&lt;</span><span class="n">sALayout</span><span class="o">&gt;</span><span class="p">]),</span> <span class="n">sB_layout</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">tA</span> <span class="o">=</span> <span class="n">copy_A</span><span class="p">.</span><span class="n">get_thread_slice</span><span class="p">(</span><span class="n">threadIdx</span><span class="p">.</span><span class="n">x</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">tAgA</span> <span class="o">=</span> <span class="n">tA</span><span class="p">.</span><span class="n">partition_S</span><span class="p">(</span><span class="n">gA</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">tAsA</span> <span class="o">=</span> <span class="n">tA</span><span class="p">.</span><span class="n">partition_D</span><span class="p">(</span><span class="n">sA</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">tB</span> <span class="o">=</span> <span class="n">copy_B</span><span class="p">.</span><span class="n">get_thread_slice</span><span class="p">(</span><span class="n">threadIdx</span><span class="p">.</span><span class="n">x</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">tBgB</span> <span class="o">=</span> <span class="n">tB</span><span class="p">.</span><span class="n">partition_S</span><span class="p">(</span><span class="n">gB</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">tBsB</span> <span class="o">=</span> <span class="n">tB</span><span class="p">.</span><span class="n">partition_D</span><span class="p">(</span><span class="n">sB</span><span class="p">);</span></span></span></code></pre></div>
+    
+    <div
+      class="collapse-overlay to-card/90 pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent opacity-0 transition-opacity duration-300">
+      <div
+        class="text-muted-foreground bg-card/80 border-border/50 hover:bg-primary/10 hover:text-primary hover:border-primary/30 absolute bottom-4 left-1/2 -translate-x-1/2 cursor-pointer rounded-full border px-3 py-1.5 text-xs backdrop-blur-sm transition-all duration-200">
+        Click to expand and view more
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+(function() {
+  const codeId = 'code-6';
+  const copyBtn = document.querySelector('.copy-code-btn[data-code-id="' + codeId + '"]');
+  const collapseBtn = document.querySelector('.collapse-code-btn[data-code-id="' + codeId + '"]');
+  const codeContainer = document.getElementById(codeId);
+
+  if (!codeContainer) return;
+
+  
+  if (copyBtn) {
+    const copyIcon = copyBtn.querySelector('.copy-icon');
+    const copyText = copyBtn.querySelector('.copy-text');
+
+    copyBtn.addEventListener('click', async function() {
+      try {
+        
+        let codeText = '';
+
+        
+        const codeTableCell = codeContainer.querySelector('.lntd:last-child code');
+        if (codeTableCell) {
+          codeText = codeTableCell.textContent || codeTableCell.innerText;
+        } else {
+          
+          const codeElement = codeContainer.querySelector('code');
+          if (codeElement) {
+            
+            const hasInlineLineNumbers = codeElement.querySelector('.ln');
+            if (hasInlineLineNumbers) {
+              
+              const codeLines = codeElement.querySelectorAll('.cl');
+              if (codeLines.length > 0) {
+                codeText = Array.from(codeLines)
+                  .map(line => {
+                    const text = line.textContent || line.innerText;
+                    
+                    return text.replace(/\n+$/, '');
+                  })
+                  .join('\n')
+                  .replace(/\n+$/, ''); 
+              } else {
+                
+                const allText = codeElement.textContent || codeElement.innerText;
+                codeText = allText.replace(/^\d+/gm, '').replace(/^\s+/gm, '');
+              }
+            } else {
+              
+              codeText = codeElement.textContent || codeElement.innerText;
+            }
+          } else {
+            
+            codeText = codeContainer.textContent || codeContainer.innerText;
+          }
+        }
+
+        
+        codeText = codeText.trim();
+
+        
+        await navigator.clipboard.writeText(codeText);
+
+        
+        copyIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M5 13l4 4L19 7\u0022 \/\u003e\n\u003c\/svg\u003e`;
+        if (copyText) {
+          copyText.textContent = 'Copied';
+        }
+        copyBtn.classList.add('text-green-600');
+
+        
+        setTimeout(() => {
+          copyIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\u0022 \/\u003e\n\u003c\/svg\u003e`;
+          if (copyText) {
+            copyText.textContent = 'Copy';
+          }
+          copyBtn.classList.remove('text-green-600');
+        }, 2000);
+
+      } catch (err) {
+        console.error('复制失败:', err);
+
+        
+        const range = document.createRange();
+        const codeElement = codeContainer.querySelector('code') || codeContainer;
+        range.selectNodeContents(codeElement);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        
+        if (copyText) {
+          copyText.textContent = 'Selected';
+        }
+
+        setTimeout(() => {
+          if (copyText) {
+            copyText.textContent = 'Copy';
+          }
+          selection.removeAllRanges();
+        }, 2000);
+      }
+    });
+  }
+
+  
+  if (collapseBtn) {
+    const collapseIcon = collapseBtn.querySelector('.collapse-icon');
+    const collapseText = collapseBtn.querySelector('.collapse-text');
+    const collapseOverlay = codeContainer.querySelector('.collapse-overlay');
+
+    
+    let codeElement = codeContainer.querySelector('pre.chroma');
+    if (!codeElement) {
+      codeElement = codeContainer.querySelector('pre');
+    }
+
+    const defaultState = collapseBtn.dataset.defaultState || 'expanded';
+    const isCollapsedAttr = collapseBtn.dataset.collapsed === 'true';
+    const autoCollapseLines = parseInt(collapseBtn.dataset.autoCollapseLines) || 30;
+    const autoCollapseHeight = parseInt(collapseBtn.dataset.autoCollapseHeight) || 400;
+    const collapsedHeight = parseInt(collapseBtn.dataset.collapsedHeight) || 120;
+
+    let isCollapsed = false;
+
+    
+    function initCollapse() {
+      
+      const shouldCollapse = isCollapsedAttr ||
+                           defaultState === 'collapsed' ||
+                           shouldAutoCollapse();
+
+      if (shouldCollapse) {
+        setCollapsed(true, false); 
+      }
+    }
+
+    function shouldAutoCollapse() {
+      
+      if (codeElement) {
+        const lines = codeElement.querySelectorAll('.line, .cl');
+        const height = codeElement.offsetHeight;
+        return lines.length > autoCollapseLines || height > autoCollapseHeight;
+      }
+
+      
+      const containerHeight = codeContainer.offsetHeight;
+      if (containerHeight > autoCollapseHeight) {
+        return true;
+      }
+
+      
+      const textContent = codeContainer.textContent || codeContainer.innerText || '';
+      const estimatedLines = textContent.split('\n').length;
+      return estimatedLines > autoCollapseLines;
+    }
+
+    function setCollapsed(collapsed, animate = true) {
+      if (!collapseOverlay) return;
+
+      isCollapsed = collapsed;
+
+      if (collapsed) {
+        
+        codeContainer.style.maxHeight = collapsedHeight + 'px';
+        codeContainer.style.overflow = 'hidden';
+        collapseOverlay.style.opacity = '1';
+        collapseOverlay.style.pointerEvents = 'auto';
+
+        
+        collapseIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M19 9l-7 7-7-7\u0022 \/\u003e\n\u003c\/svg\u003e`;
+        if (collapseText) {
+          collapseText.textContent = 'Expand';
+        }
+        collapseBtn.title = 'Expand';
+
+      } else {
+        
+        codeContainer.style.maxHeight = '';
+        codeContainer.style.overflow = '';
+        collapseOverlay.style.opacity = '0';
+        collapseOverlay.style.pointerEvents = 'none';
+
+        
+        collapseIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022 viewBox=\u00220 0 24 24\u0022\u003e\u003cpath fill=\u0022currentColor\u0022 d=\u0022M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6l-6 6z\u0022\/\u003e\u003c\/svg\u003e`;
+        if (collapseText) {
+          collapseText.textContent = 'Collapse';
+        }
+        collapseBtn.title = 'Collapse';
+      }
+
+      
+      if (animate) {
+        codeContainer.style.transition = 'max-height 0.3s ease-out';
+        setTimeout(() => {
+          codeContainer.style.transition = '';
+        }, 300);
+      }
+    }
+
+    function toggleCollapse() {
+      setCollapsed(!isCollapsed, true);
+    }
+
+    
+    collapseBtn.addEventListener('click', toggleCollapse);
+
+    
+    if (collapseOverlay) {
+      collapseOverlay.addEventListener('click', () => {
+        if (isCollapsed) {
+          setCollapsed(false, true);
+        }
+      });
+    }
+
+    
+    initCollapse();
+  }
+})();
+</script>
+<p>We then setup the shared memory tensors from a single buffer, and partition the source and destination tensors for each thread based on the <code>TiledCopy</code> objects we discussed earlier. Printing <code>tAsA.shape</code> from any thread gives us $(4, 1), 1, 4, 3$. We can see that this is exactly what we saw from <code>tidfrg_D</code>, but without mode-0, since we&rsquo;ve now sliced that tensor to get the thread-local partition. Similarly, <code>tAgA.shape</code> prints $(4, 1), 1, 4, 32$ when $K = 1024$, as $\frac{1024}{\text{Tile K}} = 32$ (mode-3 represents values tiled across $K$).</p>
+<h2 id="mainloop">mainloop</h2>
+<p>We&rsquo;ll now implement the mainloop, where each threadblock loops over its K-tiles and accumulates its individual matrix product. We begin with a prefetch to avoid some extra conditional statements inside the loop.</p>
+<div
+  class="code-block-container border-border bg-card my-6 overflow-hidden rounded-xl border shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md">
+  
+  <div
+    class="code-block-header bg-muted/30 border-border flex items-center justify-between border-b px-4 py-3">
+    
+    <div class="flex items-center gap-2">
+      <div class="text-muted-foreground flex-shrink-0">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+</svg>
+      </div>
+      <span class="text-muted-foreground text-sm font-medium">
+        C&#43;&#43;
+      </span>
+    </div>
+
+    
+    <div class="flex items-center gap-2">
+      <button
+          class="collapse-code-btn text-muted-foreground hover:text-primary hover:bg-primary/10 focus:ring-primary/20 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ease-out focus:ring-2 focus:outline-none"
+          data-code-id="code-7"
+          data-default-state="expanded"
+          data-collapsed="false"
+          data-auto-collapse-lines="30"
+          data-auto-collapse-height="400"
+          data-collapsed-height="120"
+          title="Collapse"
+          aria-label="Collapse">
+          <span class="collapse-icon">
+            <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6l-6 6z"/></svg>
+          </span>
+          <span class="collapse-text hidden sm:inline"
+            >Collapse</span
+          >
+        </button>
+      <button
+        class="copy-code-btn text-muted-foreground hover:text-primary hover:bg-primary/10 focus:ring-primary/20 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ease-out focus:ring-2 focus:outline-none"
+        data-code-id="code-7"
+        title="Copy"
+        aria-label="Copy">
+        <span class="copy-icon">
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+</svg>
+        </span>
+        <span class="copy-text hidden sm:inline"
+          >Copy</span
+        >
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="code-block-content relative" id="code-7">
+    <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c++" data-lang="c++"><span class="line"><span class="cl"><span class="n">uint</span> <span class="n">gmem_tile_idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="n">uint</span> <span class="n">gmem_tiles</span> <span class="o">=</span> <span class="n">size</span><span class="o">&lt;</span><span class="mi">2</span><span class="o">&gt;</span><span class="p">(</span><span class="n">gA</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">constexpr</span> <span class="n">uint</span> <span class="n">smem_pipes</span> <span class="o">=</span> <span class="n">size</span><span class="o">&lt;</span><span class="mi">2</span><span class="o">&gt;</span><span class="p">(</span><span class="n">sA</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// prefetch for first (smem_pipes - 1) pipes
+</span></span></span><span class="line"><span class="cl"><span class="n">CUTE_UNROLL</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="p">(</span><span class="n">uint</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">smem_pipes</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">copy</span><span class="p">(</span><span class="n">copy_A</span><span class="p">,</span> <span class="n">tAgA</span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">gmem_tile_idx</span><span class="p">),</span> <span class="n">tAsA</span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">i</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">    <span class="n">copy</span><span class="p">(</span><span class="n">copy_B</span><span class="p">,</span> <span class="n">tBgB</span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">gmem_tile_idx</span><span class="p">),</span> <span class="n">tBsB</span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">i</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cp_async_fence</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="o">--</span><span class="n">gmem_tiles</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">gmem_tiles</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="o">++</span><span class="n">gmem_tile_idx</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+    
+    <div
+      class="collapse-overlay to-card/90 pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent opacity-0 transition-opacity duration-300">
+      <div
+        class="text-muted-foreground bg-card/80 border-border/50 hover:bg-primary/10 hover:text-primary hover:border-primary/30 absolute bottom-4 left-1/2 -translate-x-1/2 cursor-pointer rounded-full border px-3 py-1.5 text-xs backdrop-blur-sm transition-all duration-200">
+        Click to expand and view more
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+(function() {
+  const codeId = 'code-7';
+  const copyBtn = document.querySelector('.copy-code-btn[data-code-id="' + codeId + '"]');
+  const collapseBtn = document.querySelector('.collapse-code-btn[data-code-id="' + codeId + '"]');
+  const codeContainer = document.getElementById(codeId);
+
+  if (!codeContainer) return;
+
+  
+  if (copyBtn) {
+    const copyIcon = copyBtn.querySelector('.copy-icon');
+    const copyText = copyBtn.querySelector('.copy-text');
+
+    copyBtn.addEventListener('click', async function() {
+      try {
+        
+        let codeText = '';
+
+        
+        const codeTableCell = codeContainer.querySelector('.lntd:last-child code');
+        if (codeTableCell) {
+          codeText = codeTableCell.textContent || codeTableCell.innerText;
+        } else {
+          
+          const codeElement = codeContainer.querySelector('code');
+          if (codeElement) {
+            
+            const hasInlineLineNumbers = codeElement.querySelector('.ln');
+            if (hasInlineLineNumbers) {
+              
+              const codeLines = codeElement.querySelectorAll('.cl');
+              if (codeLines.length > 0) {
+                codeText = Array.from(codeLines)
+                  .map(line => {
+                    const text = line.textContent || line.innerText;
+                    
+                    return text.replace(/\n+$/, '');
+                  })
+                  .join('\n')
+                  .replace(/\n+$/, ''); 
+              } else {
+                
+                const allText = codeElement.textContent || codeElement.innerText;
+                codeText = allText.replace(/^\d+/gm, '').replace(/^\s+/gm, '');
+              }
+            } else {
+              
+              codeText = codeElement.textContent || codeElement.innerText;
+            }
+          } else {
+            
+            codeText = codeContainer.textContent || codeContainer.innerText;
+          }
+        }
+
+        
+        codeText = codeText.trim();
+
+        
+        await navigator.clipboard.writeText(codeText);
+
+        
+        copyIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M5 13l4 4L19 7\u0022 \/\u003e\n\u003c\/svg\u003e`;
+        if (copyText) {
+          copyText.textContent = 'Copied';
+        }
+        copyBtn.classList.add('text-green-600');
+
+        
+        setTimeout(() => {
+          copyIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\u0022 \/\u003e\n\u003c\/svg\u003e`;
+          if (copyText) {
+            copyText.textContent = 'Copy';
+          }
+          copyBtn.classList.remove('text-green-600');
+        }, 2000);
+
+      } catch (err) {
+        console.error('复制失败:', err);
+
+        
+        const range = document.createRange();
+        const codeElement = codeContainer.querySelector('code') || codeContainer;
+        range.selectNodeContents(codeElement);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        
+        if (copyText) {
+          copyText.textContent = 'Selected';
+        }
+
+        setTimeout(() => {
+          if (copyText) {
+            copyText.textContent = 'Copy';
+          }
+          selection.removeAllRanges();
+        }, 2000);
+      }
+    });
+  }
+
+  
+  if (collapseBtn) {
+    const collapseIcon = collapseBtn.querySelector('.collapse-icon');
+    const collapseText = collapseBtn.querySelector('.collapse-text');
+    const collapseOverlay = codeContainer.querySelector('.collapse-overlay');
+
+    
+    let codeElement = codeContainer.querySelector('pre.chroma');
+    if (!codeElement) {
+      codeElement = codeContainer.querySelector('pre');
+    }
+
+    const defaultState = collapseBtn.dataset.defaultState || 'expanded';
+    const isCollapsedAttr = collapseBtn.dataset.collapsed === 'true';
+    const autoCollapseLines = parseInt(collapseBtn.dataset.autoCollapseLines) || 30;
+    const autoCollapseHeight = parseInt(collapseBtn.dataset.autoCollapseHeight) || 400;
+    const collapsedHeight = parseInt(collapseBtn.dataset.collapsedHeight) || 120;
+
+    let isCollapsed = false;
+
+    
+    function initCollapse() {
+      
+      const shouldCollapse = isCollapsedAttr ||
+                           defaultState === 'collapsed' ||
+                           shouldAutoCollapse();
+
+      if (shouldCollapse) {
+        setCollapsed(true, false); 
+      }
+    }
+
+    function shouldAutoCollapse() {
+      
+      if (codeElement) {
+        const lines = codeElement.querySelectorAll('.line, .cl');
+        const height = codeElement.offsetHeight;
+        return lines.length > autoCollapseLines || height > autoCollapseHeight;
+      }
+
+      
+      const containerHeight = codeContainer.offsetHeight;
+      if (containerHeight > autoCollapseHeight) {
+        return true;
+      }
+
+      
+      const textContent = codeContainer.textContent || codeContainer.innerText || '';
+      const estimatedLines = textContent.split('\n').length;
+      return estimatedLines > autoCollapseLines;
+    }
+
+    function setCollapsed(collapsed, animate = true) {
+      if (!collapseOverlay) return;
+
+      isCollapsed = collapsed;
+
+      if (collapsed) {
+        
+        codeContainer.style.maxHeight = collapsedHeight + 'px';
+        codeContainer.style.overflow = 'hidden';
+        collapseOverlay.style.opacity = '1';
+        collapseOverlay.style.pointerEvents = 'auto';
+
+        
+        collapseIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 viewBox=\u00220 0 24 24\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022\u003e\n  \u003cpath stroke-linecap=\u0022round\u0022 stroke-linejoin=\u0022round\u0022 stroke-width=\u00222\u0022 d=\u0022M19 9l-7 7-7-7\u0022 \/\u003e\n\u003c\/svg\u003e`;
+        if (collapseText) {
+          collapseText.textContent = 'Expand';
+        }
+        collapseBtn.title = 'Expand';
+
+      } else {
+        
+        codeContainer.style.maxHeight = '';
+        codeContainer.style.overflow = '';
+        collapseOverlay.style.opacity = '0';
+        collapseOverlay.style.pointerEvents = 'none';
+
+        
+        collapseIcon.innerHTML = `\u003csvg class=\u0022h-3 w-3\u0022 xmlns=\u0022http:\/\/www.w3.org\/2000\/svg\u0022 viewBox=\u00220 0 24 24\u0022\u003e\u003cpath fill=\u0022currentColor\u0022 d=\u0022M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6l-6 6z\u0022\/\u003e\u003c\/svg\u003e`;
+        if (collapseText) {
+          collapseText.textContent = 'Collapse';
+        }
+        collapseBtn.title = 'Collapse';
+      }
+
+      
+      if (animate) {
+        codeContainer.style.transition = 'max-height 0.3s ease-out';
+        setTimeout(() => {
+          codeContainer.style.transition = '';
+        }, 300);
+      }
+    }
+
+    function toggleCollapse() {
+      setCollapsed(!isCollapsed, true);
+    }
+
+    
+    collapseBtn.addEventListener('click', toggleCollapse);
+
+    
+    if (collapseOverlay) {
+      collapseOverlay.addEventListener('click', () => {
+        if (isCollapsed) {
+          setCollapsed(false, true);
+        }
+      });
+    }
+
+    
+    initCollapse();
+  }
+})();
+</script>
+<p>We initialize some variables for tracking:</p>
+<ul>
+<li><code>gmem_tile_idx</code> to track which global K-tile is next to be loaded</li>
+<li><code>gmem_tiles</code> is the number of total K-tiles, equal to $\frac{K}{\text{Tile K}}$ (cannot be <code>constexpr</code>, as $K$ is a runtime value)</li>
+<li><code>smem_pipes</code> is the number of shared memory pipes (in our case — 3)</li>
+</ul>
+<p>In the prefetch loop, we fire off the loads for the first 2 out of 3 pipes. For each <code>copy</code> call, we glob the values local to a copy atom, values tiled across Tile M, and values tiled across Tile K by placing an underscore at those modes. We then copy this K-tile at position <code>gmem_tile_idx</code> to the corresponding pipe. Lastly, we decrement the number of K-tiles left to load, and only increment the K-tile position if there are more left. Otherwise, the next iteration simply loads the same global K-tile into the next pipe to prevent a segfault.</p>
+<div
+    class="alert alert-important my-6 overflow-hidden rounded-lg transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md"
+    style="background-color: color-mix(in srgb, var(--color-important) 10%, transparent);
+              border-left-color: var(--color-important);
+              --hover-bg: color-mix(in srgb, var(--color-important) 15%, transparent);"
+    onmouseover="this.style.backgroundColor = this.style.getPropertyValue('--hover-bg')"
+    onmouseout="this.style.backgroundColor = 'color-mix(in srgb, var(--color-important) 10%, transparent)'"
+    role="alert"
+    aria-labelledby="alert-6-title">
+    
+    <div
+      class=" flex items-center justify-between px-6 py-6"
+      >
+      <div class="flex items-center gap-3">
+        
+        <h4
+          id="alert-6-title"
+          class="m-0 font-semibold text-foreground/90">
+          Async Copy
+        </h4>
+      </div>
+
+      
+      
+    </div>
+
+    
+    <div
+      id="alert-6-content"
+      class="alert-content  px-6 pb-6">
+      <div class="prose prose-sm text-foreground/90 max-w-none">
+        <p>To use <code>cp.async</code> effectively, CuTe provides two key functions:</p>
+<ul>
+<li><code>cp_async_fence()</code> wraps the <code>cp.async.commit_group</code> PTX instruction, which &ldquo;commits all prior initiated but uncommitted <code>cp.async</code> instructions into a cp.async-group.&rdquo; (NVIDIA)
+<ul>
+<li>This is effectively a code barrier that allows us to create logical groups of loads, so that we can wait for certain groups to finish before doing some work, while intentionally allowing others to continue.</li>
+</ul>
+</li>
+<li><code>cp_async_wait&lt;N&gt;()</code> wraps the <code>cp.async.wait_group</code> instruction, which &ldquo;will cause executing thread to wait till only N or fewer of the most recent cp.async-groups are pending and all the prior cp.async-groups committed by the executing threads are complete.&rdquo; (NVIDIA)
+<ul>
+<li>This gives us the aforementioned ability to wait for certain groups to finish. The fences create an implicit queue, and this instruction lets us &ldquo;pop off&rdquo; a specified number of pending groups from the front of the queue.
+
+<figure class="image-figure not-prose my-8" 
+        data-lightbox-enabled="false"
+        data-gallery-type="auto">
+  <div class="image-container">
+    <img
+    src="/images/posts/sm86_gemm/cp-async.png"
+    alt="hello"
+    title="An example of 6 committed groups and a `cp_async_wait` call with N=4. Guarantees that at most 4 groups are pending (may be less) and anything older is completed."
+    
+    loading="lazy"
+    decoding="async"
+    data-gallery-src="/images/posts/sm86_gemm/cp-async.png"
+    data-gallery-alt="hello"
+    data-gallery-title="An example of 6 committed groups and a `cp_async_wait` call with N=4. Guarantees that at most 4 groups are pending (may be less) and anything older is completed." /></div>
+
+  <figcaption class="image-caption">
+      An example of 6 committed groups and a <code>cp_async_wait</code> call with N=4. Guarantees that at most 4 groups are pending (may be less) and anything older is completed.
+    </figcaption></figure></li>
+</ul>
+</li>
+</ul>
       </div>
     </div>
   </div><script>
@@ -2759,7 +4123,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="nav-item">
         
           <a
-            href="/posts/fast-convolutions--beating-cudnn/"
+            href="/posts/a-learning-journey-through-ml-systems/"
             class="group bg-card border-border hover:bg-primary/5 hover:border-primary/20 focus:ring-primary/20 flex min-h-[140px] flex-col justify-between rounded-xl border p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.02] hover:shadow-lg focus:ring-2 focus:outline-none">
             <div>
               <div class="mb-3 flex items-center justify-end gap-3">
@@ -2773,7 +4137,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
               <h3
                 class="text-foreground group-hover:text-primary mb-3 line-clamp-2 text-right text-lg leading-tight font-semibold transition-colors duration-200">
-                Fast Convolutions (&#43; beating cuDNN)
+                a learning journey through ML systems
               </h3>
             </div>
 
@@ -2853,7 +4217,9 @@ document.addEventListener('DOMContentLoaded', function() {
       <nav id="TableOfContents">
   <ul>
     <li><a href="#a-brief-intro-on-gemms">a brief intro on GEMMs</a></li>
-    <li><a href="#the-kernel">the kernel</a></li>
+    <li><a href="#host-side-setup">host-side setup</a></li>
+    <li><a href="#device-side-setup">device-side setup</a></li>
+    <li><a href="#mainloop">mainloop</a></li>
   </ul>
 </nav>
     </nav>
@@ -3193,7 +4559,9 @@ document.addEventListener('DOMContentLoaded', function() {
               <nav id="TableOfContents">
   <ul>
     <li><a href="#a-brief-intro-on-gemms">a brief intro on GEMMs</a></li>
-    <li><a href="#the-kernel">the kernel</a></li>
+    <li><a href="#host-side-setup">host-side setup</a></li>
+    <li><a href="#device-side-setup">device-side setup</a></li>
+    <li><a href="#mainloop">mainloop</a></li>
   </ul>
 </nav>
             </div>

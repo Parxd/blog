@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Python on Hugo Narrow</title>
+		<link>http://localhost:44891/tags/python/</link>
+		<description>Recent content in Python on Hugo Narrow</description>
+		<generator>Hugo</generator>
+		<language>en-US</language>
+		
+		
+		
+		
+			<lastBuildDate>Thu, 25 Jun 2026 00:00:00 +0000</lastBuildDate>
+		
+			<atom:link href="http://localhost:44891/tags/python/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>Fast Convolutions (&#43; beating cuDNN)</title>
+				<link>http://localhost:44891/posts/fast-convolutions--beating-cudnn/</link>
+				<pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
+				<guid>http://localhost:44891/posts/fast-convolutions--beating-cudnn/</guid>
+				<description></description>
+			</item>
+	</channel>
+</rss>
