@@ -1,15 +1,17 @@
 ---
-title: "CuTe-ly writing an SM86 fp32fp32 GEMM"
+title: "CuTe-ly writing an SM86 SGEMM"
 date: 2026-02-05
 comment: true
 tags: ["CUDA", "C++", "GPU"]
 ---
 
-I know what you're thinking. A `fp32fp32` GEMM in 2026? For Ampere??
+I know what you're thinking. A `fp32` GEMM in 2026? For Ampere??
 
 Yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe's (now almost 6 years old) peak theoretical performance for `bf16` is 312 TFLOPs/sec. and 156 TFLOPs/sec. for `tf32`, while `fp32` sits at a "measly" 19.5 TFLOPs/sec. With [mixed-precision](https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html) training and quantized inference being the norm, GEMM itself is practically never done in `fp32` today.
 
-*Despite* all of these (good) reasons, SGEMM still acts as a great learning experience for squeezing the most performance out of GPUs (without involving tensor cores, of course). In this blogpost, I will briefly go over the structure of GEMM and iteratively work through how I optimized a kernel using [NVIDIA's CUTLASS CuTe](https://github.com/NVIDIA/cutlass/tree/main) library to match/exceed cuBLAS on *certain* problem shapes on SM86 using my personal RTX 3070 Mobile card. Fair warning though: this will not only attempt to serve as a lesson on optimizing a kernel but also on using CuTe, as I found it to be a pretty big help when trying to iterate quickly on kernels, although I know some are not the biggest fans of it...
+*Despite* all of these (good) reasons, SGEMM still acts as a great learning experience for squeezing the most performance out of GPUs (without involving tensor cores, of course). In this blogpost, I will briefly go over the structure of GEMM and iteratively work through how I optimized a kernel using [NVIDIA's CUTLASS CuTe](https://github.com/NVIDIA/cutlass/tree/main) library to match/exceed cuBLAS on *certain* problem shapes on SM86 using my personal RTX 3070 Mobile card.
+
+Disclaimer: this post will be for those relatively new to GPU programming.
 
 ## a brief intro on GEMMs
 Large and square-ish GEMM (general matrix-multiply) routines are embarrassingly parallel and compute-bound. GPUs being massively parallel SIMT processors, they are the ideal hardware to run such algorithms on quickly. 
@@ -17,7 +19,7 @@ Large and square-ish GEMM (general matrix-multiply) routines are embarrassingly 
 > [!NOTE] A Simplified Model
 > To see why large GEMMs are compute-bound, consider an SGEMM $C = AB$ of shape $2048 \times 2048 \times 2048$.
 > 
-> Simplifying the memory operations to loading $A, B$ once and storing to $C$ once from/to DRAM, this results in $(2048^2 \times 3) \times 4$ bytes of movement required. The arithmetic intensity (AI) required can be computed with $2 \times M \times N \times K$, as $K$ inner products & accumulations (using FMA) are required along both $M$ and $N$ axes and dividing by the bytes of memory moved. Thus, the AI is $\frac{2(2048^3)}{3(4)(2048^2)} \approx 341$ FLOPs/byte.
+> Simplifying the memory operations to loading $A, B$ once and storing to $C$ once from/to DRAM, this results in $(2048^2 \times 3) \times 4$ bytes of movement required. The arithmetic intensity (AI) required can be computed with $2 \times M \times N \times K$, as $K$ inner products & accumulations (using `FMA`) are required along both $M$ and $N$ axes and dividing by the bytes of memory moved. Thus, the AI is $\frac{2(2048^3)}{3(4)(2048^2)} \approx 341$ FLOPs/byte.
 > 
 > Now, mapping to hardware, we use the A100 PCIe 80 GB. as an example, which has an off-chip DRAM bandwidth of $1.94$ TFLOPs/sec. and peak `fp32` performance of $19.49$ TFLOPs/sec. Theoretically, with no compute roof, DRAM could allow us a blistering $1.94 \frac{\text{TB.}}{\text{sec.}} \times 341 \frac{\text{FLOPs}}{\text{byte}} \approx 661 \frac{\text{TFLOPs}}{\text{sec.}}$. However, since the underlying `fp32` ALUs are capped at $19.49$ TFLOPs/sec., we are compute-bound. Note that in reality, we will almost never reach either of these roofs, as we will later see. 
 > ![roofline diagram](/images/posts/sm86_gemm/roofline-dark.png "an example roofline diagram with an `fp32` ridge point (not to scale)")
@@ -79,8 +81,9 @@ for (int m = 0; m < thread_M; ++m) {
 
 Unfortunately for us, Ampere does not have such features. The closest equivalent are the `cp.async` family of instructions, which allow a warp to asynchronously transfer memory from DRAM to SMEM (one-way), bypassing the registerfile without blocking. Note that `cp.async` requires every thread in a block to cooperatively load a tile into SMEM, unlike TMA. Still, this instruction will come in handy, as we can asynchronously load the next tile of data into a circular SMEM buffer while the current tile is being processed to keep compute units busy. 
 
-We use a similar pipelining technique when moving data to the registerfile from SMEM. We allocate 2 "$K$-slices" worth of operand data (or as we will call them &mdash; blocks) from $A, B$ and have each register-backed buffer ping-pong between compute and reading the next blocks from SMEM. This diagram from NVIDIA outlines the approach well:
+We use a similar pipelining technique when moving data to the registerfile from SMEM. We allocate 2 "$K$-slices" worth of operand data (or as we will call them &mdash; blocks) from $A, B$ and have each register-backed buffer ping-pong between compute and reading the next blocks from SMEM (more in-depth discussion later). This diagram from NVIDIA outlines the approach well:
 
+<a id="software-pipeline"></a>
 ![pipeline diagram](/images/posts/sm86_gemm/software-pipeline.jpg)
 
 ## host-side setup
@@ -202,7 +205,7 @@ Corresponding each term to what we saw, we see that this tiled copy uses 256 thr
 
 Lastly, we set up a `TiledMMA` object, which assigns threads to values for matrix-multiply accumulation (MMA). Similar to `TiledCopy`, it takes an `MMA_Trait` wrapping an `MMA_Atom`, which defines the smallest "unit" of computation to be tiled. This allows for easy partitioning of the operand $A$ and $B$ matrices and register allocation for the product $C$ fragment. Since our operands are in `fp32`, which don't have tensor core support, we use the `UniversalFMA<float>` atom here. But, for example, if our operands were to be in half-precision, we'd want to use an atom like `SM80_16x8x16_F16F16F16F16_TN` that wraps a tensor core (TC) instruction.
 
-Each of these atoms intrinsically involve a different number of threads. For FMA, it's just 1 thread performing a scalar computation. Ampere TC instructions are at warp-level; they require a warp to cooperatively compute a small matrix product, while Hopper TCs involve a warpgroup (4 warps) and so on. We'll focus on the simple FMA case.
+Each of these atoms intrinsically involve a different number of threads. For `FMA`, it's just 1 thread performing a scalar computation. Ampere TC instructions are at warp-level; they require a warp to cooperatively compute a small matrix product, while Hopper TCs involve a warpgroup (4 warps) and so on. We'll focus on the simple `FMA` case.
 
 Suppose that after we've done some tuning, we decide to use 256 threads in our kernel. Of course, writing a kernel for first time, you wouldn't know the optimal number of threads, but 128 or 256 threads tend to be good starting points for GEMMs. With each thread computing 1 scalar fragment of $C$, a threadblock of 256 threads can independently compute 256 $C$ values "per atom". For simplicity (and other reasons we'll later see), we'll arrange the atom's 256 values to compute a $(16 \times 16)$ fragment of $C$.
 
@@ -232,7 +235,7 @@ auto thrfrg_C(CTensor&& ctensor) const {
     ...
 }
 ```
-We see that there is exactly 1 thread and 1 value local to the MMA atom, and 16 threads tiled in the M- and N-modes. To cover the entire product, there then must be 8 values tiled in the M- and N-modes too, meaning the $C$ fragment alone requires 64&times; 32-bit registers per thread. Let's look at `thrfrg_A` now:
+We see that there is exactly 1 thread and 1 value local to the MMA atom, and 16 threads tiled in the M- and N-modes. To cover the entire threadblock tile, there then must be 8 values tiled in the M- and N-modes too, meaning the $C$ fragment alone requires 64&times; 32-bit registers per thread. That is, each thread is computing an $(8 \times 8)$ outer product. Let's look at `thrfrg_A` now:
 
 $$((1,(16,1)),(1,(8,32,3)))$$
 
@@ -274,8 +277,40 @@ auto tBsB = tB.partition_D(sB);
 We then setup the shared memory tensors from a single buffer, and partition the source and destination tensors for each thread based on the `TiledCopy` objects we discussed earlier. Printing `tAsA.shape` from any thread gives us $(4, 1), 1, 4, 3$. We can see that this is exactly what we saw from `tidfrg_D`, but without mode-0, since we've now sliced that tensor to get the thread-local partition. Similarly, `tAgA.shape` prints $(4, 1), 1, 4, 32$ when $K = 1024$, as $\frac{1024}{\text{Tile K}} = 32$ (mode-3 represents values tiled across $K$).
 
 ```c++
-
+using blockPipes = _2;  // num. of block buffers
+...
+auto tC = tiled_mma.get_thread_slice(threadIdx.x);
+auto tCsA = tC.partition_A(sA);
+auto tCsB = tC.partition_B(sB);
+auto tCgC = tC.partition_C(gC);
+auto tCrA = make_fragment_like(composition(tCsA(_,_,_,0), make_shape(_,_,blockPipes{})));
+auto tCrB = make_fragment_like(composition(tCsB(_,_,_,0), make_shape(_,_,blockPipes{})));
+auto tCrC = make_fragment_like(tCgC);
+fill(tCrC, 0.0);
 ```
+
+Last component for the setup is now setting up the thread-local MMA registers. `TiledMMA` already gave us a thread-value mapping for $A$, $B$, and $C$, so we just need to slice out each thread-local view and partition the input tensors. Notice that `gC` is referring to the *global memory* pointer for $C$, since we're not tiling it into SMEM, only $A$ and $B$.
+
+You may be asking what this is doing: `composition(tCsA(_,_,_,0), make_shape(_,_,blockPipes{}))`. Recall the pipelining diagram from [before](#software-pipeline), and how each thread owns all of its K-mode. Ideally, we want each thread to begin its load for the next "slice" of its K-mode from SMEM *while* doing compute on this current slice to save some cycles. The cost though is that we require more registers to eliminate the potential scoreboard stall.
+
+> [!NOTE]+ Scoreboard
+> In CUDA, the scoreboard is a memory dependency tracking system. It dynamically ensures that instructions that depend on some overlapping memory run in an order that preserves correctness (more on this from [Modal](https://modal.com/gpu-glossary/perf/scoreboard-stall)). Consider this pseudocode:
+> ```c++
+> // single register
+> float a_reg, b_reg;
+> for (k = 0 ... Tile K) {
+>     a_reg = sA[k];  // LDS
+>     b_reg = sB[k];  // LDS
+>     c += a_reg * b_reg;  // FMA (stalls until LDS completes)
+> }
+> ```
+> Because the `FMA` on any iteration reads from the same registers that the `LDS` on that iteration writes to, a scoreboard dependency is created &mdash; the `FMA` stalls until both loads complete, despite the fact that they could run on independent hardware units on an SM (`LDS` on load/store units, `FMA` on CUDA cores). Visualizing this for one of the operands...
+> ![scoreboard1](/images/posts/sm86_gemm/scoreboard1.png "Due to the memory dependency between the K-tiles, the compiler cannot order `LDS` for $K = 1$ before or during `FMA`")
+> ![scoreboard2](/images/posts/sm86_gemm/scoreboard2.png "By allocating the second register block $B$, we can eliminate the dependency, allowing the compiler to interleave the `LDS` for the next tile with the `FMA` for the current tile. ")
+> 
+> Note we are at the mercy of the compiler here. It's up to us as the programmer to semantically express the dependency-free condition as clearly as possible and verify that the compiler has generated the correct SASS (nsight-compute is good for this). However, ptxas tends to be good at optimizing these kinds of common pipeline routines.
+> 
+> If you have some experience in CPU performance optimization, you're probably familiar with this kind of software pipelining. What this typically looks like is scheduling a high latency instruction prior to executing another independent instruction, so that the former does not hurt throughput and they can run on different hardware units. This enables what we call ILP (instruction-level parallelism) &mdash; attempting to exploit parallelism on an instruction-scheduling basis within each warp's instruction stream.
 
 ## mainloop
 We'll now implement the mainloop, where each threadblock loops over its K-tiles and accumulates its individual matrix product. We begin with a prefetch to avoid some extra conditional statements inside the loop.
@@ -305,7 +340,7 @@ We initialize some variables for tracking:
 
 In the prefetch loop, we fire off the loads for the first 2 out of 3 pipes. For each `copy` call, we glob the values local to a copy atom, values tiled across Tile M, and values tiled across Tile K by placing an underscore at those modes. We then copy this K-tile at position `gmem_tile_idx` to the corresponding pipe. Lastly, we decrement the number of K-tiles left to load, and only increment the K-tile position if there are more left. Otherwise, the next iteration simply loads the same global K-tile into the next pipe to prevent a segfault.
 
-> [!IMPORTANT] Async Copy
+> [!IMPORTANT]+ Async Copy
 > To use `cp.async` effectively, CuTe provides two key functions:
 > - `cp_async_fence()` wraps the `cp.async.commit_group` PTX instruction, which "commits all prior initiated but uncommitted `cp.async` instructions into a cp.async-group." (NVIDIA)
 >   - This is effectively a code barrier that allows us to create logical groups of loads, so that we can wait for certain groups to finish before doing some work, while intentionally allowing others to continue. 
