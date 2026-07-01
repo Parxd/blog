@@ -234,9 +234,9 @@ auto thrfrg_C(CTensor&& ctensor) const {
 ```
 We see that there is exactly 1 thread and 1 value local to the MMA atom, and 16 threads tiled in the M- and N-modes. To cover the entire product, there then must be 8 values tiled in the M- and N-modes too, meaning the $C$ fragment alone requires 64&times; 32-bit registers per thread. Let's look at `thrfrg_A` now:
 
-$$
-((1,(16,1)),(1,(8,32,3)))
-$$
+$$((1,(16,1)),(1,(8,32,3)))$$
+
+Notice here how *no* threads are tiled in the K-mode. Instead, each thread owns all values in its K-mode, as it requires an accumulation over this mode. Now, we can move onto the block/thread-local setup within the actual kernel.
 
 ## device-side setup
 ```c++
@@ -272,6 +272,10 @@ auto tBsB = tB.partition_D(sB);
 ```
 
 We then setup the shared memory tensors from a single buffer, and partition the source and destination tensors for each thread based on the `TiledCopy` objects we discussed earlier. Printing `tAsA.shape` from any thread gives us $(4, 1), 1, 4, 3$. We can see that this is exactly what we saw from `tidfrg_D`, but without mode-0, since we've now sliced that tensor to get the thread-local partition. Similarly, `tAgA.shape` prints $(4, 1), 1, 4, 32$ when $K = 1024$, as $\frac{1024}{\text{Tile K}} = 32$ (mode-3 represents values tiled across $K$).
+
+```c++
+
+```
 
 ## mainloop
 We'll now implement the mainloop, where each threadblock loops over its K-tiles and accumulates its individual matrix product. We begin with a prefetch to avoid some extra conditional statements inside the loop.

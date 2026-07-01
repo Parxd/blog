@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 	<channel>
 		<title>GPU on Hugo Narrow</title>
-		<link>http://localhost:44891/tags/gpu/</link>
+		<link>http://localhost:38951/tags/gpu/</link>
 		<description>Recent content in GPU on Hugo Narrow</description>
 		<generator>Hugo</generator>
 		<language>en-US</language>
@@ -12,19 +12,19 @@
 		
 			<lastBuildDate>Thu, 25 Jun 2026 00:00:00 +0000</lastBuildDate>
 		
-			<atom:link href="http://localhost:44891/tags/gpu/index.xml" rel="self" type="application/rss+xml" />
+			<atom:link href="http://localhost:38951/tags/gpu/index.xml" rel="self" type="application/rss+xml" />
 			<item>
 				<title>Fast Convolutions (&#43; beating cuDNN)</title>
-				<link>http://localhost:44891/posts/fast-convolutions--beating-cudnn/</link>
+				<link>http://localhost:38951/posts/fast-convolutions--beating-cudnn/</link>
 				<pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/posts/fast-convolutions--beating-cudnn/</guid>
+				<guid>http://localhost:38951/posts/fast-convolutions--beating-cudnn/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>CuTe-ly writing an SM86 fp32fp32 GEMM</title>
-				<link>http://localhost:44891/posts/cute-ly-writing-an-sm86-fp32fp32-gemm/</link>
+				<link>http://localhost:38951/posts/cute-ly-writing-an-sm86-fp32fp32-gemm/</link>
 				<pubDate>Thu, 05 Feb 2026 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/posts/cute-ly-writing-an-sm86-fp32fp32-gemm/</guid>
+				<guid>http://localhost:38951/posts/cute-ly-writing-an-sm86-fp32fp32-gemm/</guid>
 				<description>&lt;p&gt;I know what you&amp;rsquo;re thinking. A &lt;code&gt;fp32fp32&lt;/code&gt; GEMM in 2026? For Ampere??&lt;/p&gt;&#xA;&lt;p&gt;Yes, SGEMM is rarely ever used these days in the ML space given the massive compute throughput gap between CUDA and tensor cores. For reference, an A100 PCIe&amp;rsquo;s (now almost 6 years old) peak theoretical performance for &lt;code&gt;bf16&lt;/code&gt; is 312 TFLOPs/sec. and 156 TFLOPs/sec. for &lt;code&gt;tf32&lt;/code&gt;, while &lt;code&gt;fp32&lt;/code&gt; sits at a &amp;ldquo;measly&amp;rdquo; 19.5 TFLOPs/sec. With &lt;a href=&#34;https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html&#34;target=&#34;_blank&#34;&#xA;  class=&#34;inline-flex items-center gap-1&#34;&#xA;&gt;mixed-precision&lt;svg class=&#34;h-3 w-3 flex-shrink-0&#34; id=&#34;external-link&#34; xmlns=&#34;http://www.w3.org/2000/svg&#34; viewBox=&#34;0 0 24 24&#34;&gt;&lt;path fill=&#34;none&#34; stroke=&#34;currentColor&#34; stroke-linecap=&#34;round&#34; stroke-linejoin=&#34;round&#34; stroke-width=&#34;2&#34; d=&#34;M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6&#34;/&gt;&lt;/svg&gt;&#xA;&lt;/a&gt; training and quantized inference being the norm, GEMM itself is practically never done in &lt;code&gt;fp32&lt;/code&gt; today.&lt;/p&gt;</description>
 			</item>
 	</channel>

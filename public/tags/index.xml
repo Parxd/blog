@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 	<channel>
 		<title>Tags on Hugo Narrow</title>
-		<link>http://localhost:44891/tags/</link>
+		<link>http://localhost:38951/tags/</link>
 		<description>Recent content in Tags on Hugo Narrow</description>
 		<generator>Hugo</generator>
 		<language>en-US</language>
@@ -12,145 +12,145 @@
 		
 			<lastBuildDate>Thu, 25 Jun 2026 00:00:00 +0000</lastBuildDate>
 		
-			<atom:link href="http://localhost:44891/tags/index.xml" rel="self" type="application/rss+xml" />
+			<atom:link href="http://localhost:38951/tags/index.xml" rel="self" type="application/rss+xml" />
 			<item>
 				<title>CUDA</title>
-				<link>http://localhost:44891/tags/cuda/</link>
+				<link>http://localhost:38951/tags/cuda/</link>
 				<pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/tags/cuda/</guid>
+				<guid>http://localhost:38951/tags/cuda/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>GPU</title>
-				<link>http://localhost:44891/tags/gpu/</link>
+				<link>http://localhost:38951/tags/gpu/</link>
 				<pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/tags/gpu/</guid>
+				<guid>http://localhost:38951/tags/gpu/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Python</title>
-				<link>http://localhost:44891/tags/python/</link>
+				<link>http://localhost:38951/tags/python/</link>
 				<pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/tags/python/</guid>
+				<guid>http://localhost:38951/tags/python/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Personal</title>
-				<link>http://localhost:44891/tags/personal/</link>
+				<link>http://localhost:38951/tags/personal/</link>
 				<pubDate>Wed, 24 Jun 2026 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/tags/personal/</guid>
+				<guid>http://localhost:38951/tags/personal/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>C&#43;&#43;</title>
-				<link>http://localhost:44891/tags/c&#43;&#43;/</link>
+				<link>http://localhost:38951/tags/c&#43;&#43;/</link>
 				<pubDate>Thu, 05 Feb 2026 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/tags/c&#43;&#43;/</guid>
+				<guid>http://localhost:38951/tags/c&#43;&#43;/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Shortcode</title>
-				<link>http://localhost:44891/tags/shortcode/</link>
+				<link>http://localhost:38951/tags/shortcode/</link>
 				<pubDate>Fri, 26 Dec 2025 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/tags/shortcode/</guid>
+				<guid>http://localhost:38951/tags/shortcode/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Alert</title>
-				<link>http://localhost:44891/tags/alert/</link>
+				<link>http://localhost:38951/tags/alert/</link>
 				<pubDate>Sun, 01 Jun 2025 10:00:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/alert/</guid>
+				<guid>http://localhost:38951/tags/alert/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Markdown</title>
-				<link>http://localhost:44891/tags/markdown/</link>
+				<link>http://localhost:38951/tags/markdown/</link>
 				<pubDate>Sun, 01 Jun 2025 10:00:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/markdown/</guid>
+				<guid>http://localhost:38951/tags/markdown/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Test</title>
-				<link>http://localhost:44891/tags/test/</link>
+				<link>http://localhost:38951/tags/test/</link>
 				<pubDate>Sun, 01 Jun 2025 10:00:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/test/</guid>
+				<guid>http://localhost:38951/tags/test/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Math</title>
-				<link>http://localhost:44891/tags/math/</link>
+				<link>http://localhost:38951/tags/math/</link>
 				<pubDate>Tue, 16 Jan 2024 23:30:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/math/</guid>
+				<guid>http://localhost:38951/tags/math/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Mermaid</title>
-				<link>http://localhost:44891/tags/mermaid/</link>
+				<link>http://localhost:38951/tags/mermaid/</link>
 				<pubDate>Tue, 16 Jan 2024 23:30:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/mermaid/</guid>
+				<guid>http://localhost:38951/tags/mermaid/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Image</title>
-				<link>http://localhost:44891/tags/image/</link>
+				<link>http://localhost:38951/tags/image/</link>
 				<pubDate>Tue, 16 Jan 2024 22:30:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/image/</guid>
+				<guid>http://localhost:38951/tags/image/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Rendering</title>
-				<link>http://localhost:44891/tags/rendering/</link>
+				<link>http://localhost:38951/tags/rendering/</link>
 				<pubDate>Tue, 16 Jan 2024 22:30:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/rendering/</guid>
+				<guid>http://localhost:38951/tags/rendering/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Code</title>
-				<link>http://localhost:44891/tags/code/</link>
+				<link>http://localhost:38951/tags/code/</link>
 				<pubDate>Tue, 16 Jan 2024 10:00:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/code/</guid>
+				<guid>http://localhost:38951/tags/code/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Syntax-Highlighting</title>
-				<link>http://localhost:44891/tags/syntax-highlighting/</link>
+				<link>http://localhost:38951/tags/syntax-highlighting/</link>
 				<pubDate>Tue, 16 Jan 2024 10:00:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/syntax-highlighting/</guid>
+				<guid>http://localhost:38951/tags/syntax-highlighting/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Prose</title>
-				<link>http://localhost:44891/tags/prose/</link>
+				<link>http://localhost:38951/tags/prose/</link>
 				<pubDate>Mon, 15 Jan 2024 10:00:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/prose/</guid>
+				<guid>http://localhost:38951/tags/prose/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>Style</title>
-				<link>http://localhost:44891/tags/style/</link>
+				<link>http://localhost:38951/tags/style/</link>
 				<pubDate>Mon, 15 Jan 2024 10:00:00 +0800</pubDate>
-				<guid>http://localhost:44891/tags/style/</guid>
+				<guid>http://localhost:38951/tags/style/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>图片</title>
-				<link>http://localhost:44891/tags/%E5%9B%BE%E7%89%87/</link>
+				<link>http://localhost:38951/tags/%E5%9B%BE%E7%89%87/</link>
 				<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/tags/%E5%9B%BE%E7%89%87/</guid>
+				<guid>http://localhost:38951/tags/%E5%9B%BE%E7%89%87/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>测试</title>
-				<link>http://localhost:44891/tags/%E6%B5%8B%E8%AF%95/</link>
+				<link>http://localhost:38951/tags/%E6%B5%8B%E8%AF%95/</link>
 				<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/tags/%E6%B5%8B%E8%AF%95/</guid>
+				<guid>http://localhost:38951/tags/%E6%B5%8B%E8%AF%95/</guid>
 				<description></description>
 			</item>
 			<item>
 				<title>渲染</title>
-				<link>http://localhost:44891/tags/%E6%B8%B2%E6%9F%93/</link>
+				<link>http://localhost:38951/tags/%E6%B8%B2%E6%9F%93/</link>
 				<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-				<guid>http://localhost:44891/tags/%E6%B8%B2%E6%9F%93/</guid>
+				<guid>http://localhost:38951/tags/%E6%B8%B2%E6%9F%93/</guid>
 				<description></description>
 			</item>
 	</channel>
