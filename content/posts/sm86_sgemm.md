@@ -359,4 +359,19 @@ In the prefetch loop, we fire off the loads for the first 2 out of 3 pipes. For 
 > - We have fine-grained control over memory visibility and synchronization.
 >   - For GEMM, the values mapped to each warp for GMEM to SMEM loads are often different from the values mapped for SMEM to registerfile loads. Since warps depend on other warps to load data before their inner accumulation loops, we need to ensure shared memory visibility to the entire threadblock. We use the `__syncthreads` runtime barrier, waiting until all warps arrive, in between GMEM to SMEM loads and SMEM to register loads.
 >   - Using standard `LDG` instructions instead forces all GMEM to SMEM loads to complete, including those for succeeding tiles we don't need at the moment, because we don't have the fine-grained control to selectively wait on certain loads.
->   - `cp.async` decouples the threadblock-wide execution barrier from the loads, allowing us to use `__syncthreads` to ensure SMEM visibility, while still giving us flexibility on the synchronization of the loads. We'll see this in action below in the mainloop.
+>   - `cp.async` decouples the threadblock-wide execution barrier from the loads, allowing us to use `__syncthreads` to ensure SMEM visibility, while still giving us flexibility on the synchronization of the loads. We'll see this in action later in the mainloop.
+
+And for the last setup bits before the actual loop body, we do a prefetch for the first register block from SMEM. Note that we need to wait until the first tile is loaded using `cp_async_wait<1>` and sync the threadblock for visibility.
+```c++
+int block_pipe = 0;
+cp_async_wait<smem_pipes - 2>();
+__syncthreads();
+// prefetch rmem_block = 0
+copy(tCsA(_,_,0,0), tCrA(_,_,block_pipe));  // (M, K, pipe)
+copy(tCsB(_,_,0,0), tCrB(_,_,block_pipe));  // (N, K, pipe)
+
+uint pipe_read = 0;
+uint pipe_write = smem_pipes - 1;
+constexpr uint rmem_blocks = size<2>(tCsA);
+const uint k_iters = gmem_tiles + (smem_pipes - 1);
+```
