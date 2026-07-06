@@ -11,7 +11,7 @@ Yes, SGEMM is rarely ever used these days in the ML space given the massive comp
 
 *Despite* all of these (good) reasons, SGEMM still acts as a great learning experience for squeezing the most performance out of GPUs (without involving tensor cores, of course). In this blogpost, I will briefly go over the structure of GEMM and iteratively work through how I optimized a kernel using [NVIDIA's CUTLASS CuTe](https://github.com/NVIDIA/cutlass/tree/main) library to match/exceed cuBLAS on *certain* problem shapes on SM86 using my personal RTX 3070 Mobile card.
 
-Disclaimer: this post will be for those relatively new to GPU programming.
+Disclaimer: this post will be for those relatively new to kernel programming, but with a basic understanding of general GPU concepts.
 
 ## a brief intro on GEMMs
 Large and square-ish GEMM (general matrix-multiply) routines are embarrassingly parallel and compute-bound. GPUs being massively parallel SIMT processors, they are the ideal hardware to run such algorithms on quickly. 
@@ -28,9 +28,9 @@ Large and square-ish GEMM (general matrix-multiply) routines are embarrassingly 
 
 So the goal is straightforward: keep compute units busy by making sure data is always there when they need it. This pushes us towards using faster levels of the CUDA memory hierarchy. This includes the non-programmable L1 and L2 caches, and programmable shared memory (SMEM) and registerfile. These on-chip memory regions are much smaller in size, but have far higher throughput than DRAM. A more detailed discussion of these memory levels is available in the [CUDA docs](https://docs.nvidia.com/cuda/cuda-programming-guide/01-introduction/programming-model.html).
 
-> The basic hardware execution unit of NVIDIA GPUs is the streaming multiprocessor (SM), which contains shared memory, the registerfile, ALUs, LSUs, warp schedulers, and more. Warp schedulers issue instructions for warps to execute in lockstep (barring warp divergence), and can swap executing warps extremely quickly when some are in a blocked state, enabling latency hiding. See the Modal glossary for more details. 
+> The basic hardware unit of NVIDIA GPUs is the streaming multiprocessor (SM), which contains shared memory, the registerfile, ALUs, LSUs, warp schedulers, and more. Warp schedulers issue instructions for warps to execute in lockstep (barring warp divergence), and can swap executing warps extremely quickly when some are in a blocked state, enabling latency hiding.
 
-To exploit this memory hierarchy and the large data reuse inherent to GEMM, most large routines follow a similar pattern: tile and move $A, B$ into SMEM and loop along the $K$-axis for each thread/warp to accumulate its own small outer product tile within the SMEM tile. See the basic pseudocode below. With the introduction of tensor cores, the motivation for tiling became stronger, as these specialized hardware units execute warp-wide mini-GEMMs on specific tile shapes. Newer microarchitectures like Hopper (SM90) and Blackwell (SM100+) also have WGMMA, TMA, and TMEM, which are hardware features that can accelerate such routines greatly.
+To exploit this memory hierarchy and the large data reuse inherent to GEMM, most large routines follow a similar pattern: tile and move $A, B$ into SMEM and loop along the $K$-axis for each thread/warp to accumulate its own small outer product tile within the SMEM tile. See the basic pseudocode below. With the introduction of tensor cores, the motivation for tiling became stronger, as these specialized hardware units execute warp-wide mini-GEMMs on specific tile shapes. Newer microarchitectures like Hopper (SM90) and Blackwell (SM100+) also have WGMMA, TMA, and TMEM, which are asynchronous hardware units that can accelerate such routines greatly.
 
 ```c++
 // SMEM tiles
@@ -79,9 +79,9 @@ for (int m = 0; m < thread_M; ++m) {
 // LDS = read from SMEM, STS = write to SMEM
 ```
 
-Unfortunately for us, Ampere does not have such features. The closest equivalent are the `cp.async` family of instructions, which allow a warp to asynchronously transfer memory from DRAM to SMEM (one-way), bypassing the registerfile without blocking. Note that `cp.async` requires every thread in a block to cooperatively load a tile into SMEM, unlike TMA. Still, this instruction will come in handy, as we can asynchronously load the next tile of data into a circular SMEM buffer while the current tile is being processed to keep compute units busy. 
+Unfortunately for us, Ampere does not have such features. The closest equivalent is the hardware-backed `cp.async` family of instructions, which allow a warp to asynchronously transfer memory from DRAM to SMEM (one-way), bypassing the registerfile without blocking. Note that `cp.async` requires every thread in a block to cooperatively load a tile into SMEM, unlike TMA. Still, this instruction will come in handy, as we can asynchronously load the next tile of data into a circular SMEM buffer while the current tile is being processed to keep compute units busy. 
 
-We use a similar pipelining technique when moving data to the registerfile from SMEM. We allocate 2 "$K$-slices" worth of operand data (or as we will call them &mdash; blocks) from $A, B$ and have each register-backed buffer ping-pong between compute and reading the next blocks from SMEM (more in-depth discussion later). This diagram from NVIDIA outlines the approach well:
+We use a similar pipelining technique when moving data to the registerfile from SMEM. We allocate 2 "$K$-slices" worth of operand data (or as we will call them &mdash; blocks) from $A, B$ and have each register-backed buffer swap between compute and reading the next blocks from SMEM (more in-depth discussion later). This diagram from NVIDIA outlines the approach well:
 
 <a id="software-pipeline"></a>
 ![pipeline diagram](/images/posts/sm86_gemm/software-pipeline.jpg)
@@ -291,9 +291,9 @@ fill(tCrC, 0.0);
 
 Last component for the setup is now setting up the thread-local MMA registers. `TiledMMA` already gave us a thread-value mapping for $A$, $B$, and $C$, so we just need to slice out each thread-local view and partition the input tensors. Notice that `gC` is referring to the *global memory* pointer for $C$, since we're not tiling it into SMEM, only $A$ and $B$.
 
-You may be asking what this is doing: `composition(tCsA(_,_,_,0), make_shape(_,_,blockPipes{}))`. Recall the pipelining diagram from [before](#software-pipeline), and how each thread owns all of its K-mode. Ideally, we want each thread to begin its load for the next "slice" of its K-mode from SMEM *while* doing compute on this current slice to save some cycles. The cost though is that we require more registers to eliminate the potential scoreboard stall.
+You may be asking what this is doing: `composition(tCsA(_,_,_,0), make_shape(_,_,blockPipes{}))`. Recall the pipelining diagram from [before](#software-pipeline), and how each thread owns all of its K-mode. Ideally, we want each thread to begin its load for the next "slice" of its K-mode from SMEM *while* doing compute on this current slice to save some cycles. The cost though is that we require more registers to eliminate the potential scoreboard stall, hence why we set `blockPipes` to 2. 
 
-> [!NOTE]+ Scoreboard
+> [!NOTE]- Scoreboard
 > In CUDA, the scoreboard is a memory dependency tracking system. It dynamically ensures that instructions that depend on some overlapping memory run in an order that preserves correctness (more on this from [Modal](https://modal.com/gpu-glossary/perf/scoreboard-stall)). Consider this pseudocode:
 > ```c++
 > // single register
@@ -310,7 +310,13 @@ You may be asking what this is doing: `composition(tCsA(_,_,_,0), make_shape(_,_
 > 
 > Note we are at the mercy of the compiler here. It's up to us as the programmer to semantically express the dependency-free condition as clearly as possible and verify that the compiler has generated the correct SASS (nsight-compute is good for this). However, ptxas tends to be good at optimizing these kinds of common pipeline routines.
 > 
-> If you have some experience in CPU performance optimization, you're probably familiar with this kind of software pipelining. What this typically looks like is scheduling a high latency instruction prior to executing another independent instruction, so that the former does not hurt throughput and they can run on different hardware units. This enables what we call ILP (instruction-level parallelism) &mdash; attempting to exploit parallelism on an instruction-scheduling basis within each warp's instruction stream.
+> If you have some experience in performance optimization, you're probably familiar with this kind of software pipelining. What this typically looks like is scheduling a high latency instruction prior to executing another independent instruction, so that the former does not hurt throughput and they can run on different hardware units. This enables what we call ILP (instruction-level parallelism) &mdash; attempting to exploit parallelism on an instruction-scheduling basis within each warp's instruction stream.
+> 
+> Note that this is not the only way to expose ILP. Another common technique is unrolling a loop if it's bound by a compile-time constant. Since compute/load/store instructions are pipelined and have an associated latency, we can schedule multiple independent instructions of the same type to saturate a hardware unit. This way, for example, one `FMA` may be on cycle 2/4 while another independent one may be on cycle 1/4 on the same ALU.
+
+Recall from our `TiledMMA` discussion earlier that `thrfrg_A` mapped 8 values in the M-mode and all 32 values in the K-mode to each thread. The motivation of the `composition(...)` is to only have `blockPipes` values in the K-mode physically allocated in registers, since allocating the entire K-mode may cause register spilling (8 &times; 32 = 256 registers for 1 operand alone!). Recall register spilling occurs when each thread requires over a certain number of registers (depends on occupancy) and causes the compiler to store registers in local memory (physically backed by slow DRAM) instead, hurting performance.
+
+`tCsA(_,_,_,0)` globs all the values local to the MMA Atom (1), values tiled in the M-mode (8), and tiled in the K-mode (32). The `0` in the last mode specifies that we just want the values local to one SMEM pipe. We then *compose* (roughly analagous to functional composition) this sub-tensor with a shape that is identity for values local to the MMA Atom and tiled in the M-mode, but restrict the K-mode values to `blockPipes`.
 
 ## mainloop
 We'll now implement the mainloop, where each threadblock loops over its K-tiles and accumulates its individual matrix product. We begin with a prefetch to avoid some extra conditional statements inside the loop.
@@ -335,7 +341,7 @@ for (uint i = 0; i < smem_pipes - 1; ++i) {
 
 We initialize some variables for tracking:
 - `gmem_tile_idx` to track which global K-tile is next to be loaded
-- `gmem_tiles` is the number of total K-tiles, equal to $\frac{K}{\text{Tile K}}$ (cannot be `constexpr`, as $K$ is a runtime value)
+- `gmem_tiles` is the number of total K-tiles, equal to $\frac{K}{\text{Tile K}}$ (cannot be `constexpr` if $K$ is a runtime value)
 - `smem_pipes` is the number of shared memory pipes (in our case &mdash; 3)
 
 In the prefetch loop, we fire off the loads for the first 2 out of 3 pipes. For each `copy` call, we glob the values local to a copy atom, values tiled across Tile M, and values tiled across Tile K by placing an underscore at those modes. We then copy this K-tile at position `gmem_tile_idx` to the corresponding pipe. Lastly, we decrement the number of K-tiles left to load, and only increment the K-tile position if there are more left. Otherwise, the next iteration simply loads the same global K-tile into the next pipe to prevent a segfault.
@@ -347,4 +353,10 @@ In the prefetch loop, we fire off the loads for the first 2 out of 3 pipes. For 
 > - `cp_async_wait<N>()` wraps the `cp.async.wait_group` instruction, which "will cause executing thread to wait till only N or fewer of the most recent cp.async-groups are pending and all the prior cp.async-groups committed by the executing threads are complete." (NVIDIA)
 >   - This gives us the aforementioned ability to wait for certain groups to finish. The fences create an implicit queue, and this instruction lets us "pop off" a specified number of pending groups from the front of the queue.
 > ![hello](/images/posts/sm86_gemm/cp-async.png "An example of 6 committed groups and a `cp_async_wait` call with N=4. Guarantees that at most 4 groups are pending (may be less) and anything older is completed.")
-
+> 
+> Given our discussion earlier on ILP and overlapping certain instructions, you may be wondering why `cp.async` was such a powerful introduction with Ampere chips. Why can't we just run a standard `LDG` (load from global memory) instruction while doing compute on the current tile? The 2 biggest benefits from using `cp.async` instead are:
+> - Global memory loads do not take up registers. Standard `LDG` stages memory through registers first before reaching SMEM, consuming valuable registers and leaving less for compute-intensive `FMA`/`MMA` instructions.
+> - We have fine-grained control over memory visibility and synchronization.
+>   - For GEMM, the values mapped to each warp for GMEM to SMEM loads are often different from the values mapped for SMEM to registerfile loads. Since warps depend on other warps to load data before their inner accumulation loops, we need to ensure shared memory visibility to the entire threadblock. We use the `__syncthreads` runtime barrier, waiting until all warps arrive, in between GMEM to SMEM loads and SMEM to register loads.
+>   - Using standard `LDG` instructions instead forces all GMEM to SMEM loads to complete, including those for succeeding tiles we don't need at the moment, because we don't have the fine-grained control to selectively wait on certain loads.
+>   - `cp.async` decouples the threadblock-wide execution barrier from the loads, allowing us to use `__syncthreads` to ensure SMEM visibility, while still giving us flexibility on the synchronization of the loads. We'll see this in action below in the mainloop.
