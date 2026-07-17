@@ -310,13 +310,13 @@ You may be asking what this is doing: `composition(tCsA(_,_,_,0), make_shape(_,_
 > 
 > Note we are at the mercy of the compiler here. It's up to us as the programmer to semantically express the dependency-free condition as clearly as possible and verify that the compiler has generated the correct SASS (nsight-compute is good for this). However, ptxas tends to be good at optimizing these kinds of common pipeline routines.
 > 
-> If you have some experience in performance optimization, you're probably familiar with this kind of software pipelining. What this typically looks like is scheduling a high latency instruction prior to executing another independent instruction, so that the former does not hurt throughput and they can run on different hardware units. This enables what we call ILP (instruction-level parallelism) &mdash; attempting to exploit parallelism on an instruction-scheduling basis within each warp's instruction stream.
+> If you have some experience in performance optimization, you're probably familiar with this kind of software pipelining. What this typically looks like is scheduling a high latency instruction prior to executing another independent instruction, so that the former does not hurt throughput and they can run on different hardware units. This enables ILP (instruction-level parallelism) &mdash; attempting to exploit parallelism on an instruction-scheduling basis within each warp's instruction stream.
 > 
 > Note that this is not the only way to expose ILP. Another common technique is unrolling a loop if it's bound by a compile-time constant. Since compute/load/store instructions are pipelined and have an associated latency, we can schedule multiple independent instructions of the same type to saturate a hardware unit. This way, for example, one `FMA` may be on cycle 2/4 while another independent one may be on cycle 1/4 on the same ALU.
 
 Recall from our `TiledMMA` discussion earlier that `thrfrg_A` mapped 8 values in the M-mode and all 32 values in the K-mode to each thread. The motivation of the `composition(...)` is to only have `blockPipes` values in the K-mode physically allocated in registers, since allocating the entire K-mode may cause register spilling (8 &times; 32 = 256 registers for 1 operand alone!). Recall register spilling occurs when each thread requires over a certain number of registers (depends on occupancy) and causes the compiler to store registers in local memory (physically backed by slow DRAM) instead, hurting performance.
 
-`tCsA(_,_,_,0)` globs all the values local to the MMA Atom (1), values tiled in the M-mode (8), and tiled in the K-mode (32). The `0` in the last mode specifies that we just want the values local to one SMEM pipe. We then *compose* (roughly analagous to functional composition) this sub-tensor with a shape that is identity for values local to the MMA Atom and tiled in the M-mode, but restrict the K-mode values to `blockPipes`.
+`tCsA(_,_,_,0)` globs all the values local to the MMA Atom (1), values tiled in the M-mode (8), and tiled in the K-mode (32). The `0` in the last mode specifies that we just want the values local to one SMEM pipe. We then *compose* (roughly analagous to functional composition) this sub-tensor with a shape that is identity for values local to the MMA Atom and tiled in the M-mode, but restricts the K-mode values to `blockPipes`.
 
 ## mainloop
 We'll now implement the mainloop, where each threadblock loops over its K-tiles and accumulates its individual matrix product. We begin with a prefetch to avoid some extra conditional statements inside the loop.
@@ -361,7 +361,8 @@ In the prefetch loop, we fire off the loads for the first 2 out of 3 pipes. For 
 >   - Using standard `LDG` instructions instead forces all GMEM to SMEM loads to complete, including those for succeeding tiles we don't need at the moment, because we don't have the fine-grained control to selectively wait on certain loads.
 >   - `cp.async` decouples the threadblock-wide execution barrier from the loads, allowing us to use `__syncthreads` to ensure SMEM visibility, while still giving us flexibility on the synchronization of the loads. We'll see this in action later in the mainloop.
 
-And for the last setup bits before the actual loop body, we do a prefetch for the first register block from SMEM. Note that we need to wait until the first tile is loaded using `cp_async_wait<1>` and sync the threadblock for visibility.
+And for the last setup bits before the actual loop body, we do a prefetch for the first register block from SMEM. Note that we need to wait until just the first tile is loaded using `cp_async_wait<1>` and sync the threadblock for visibility.
+
 ```c++
 int block_pipe = 0;
 cp_async_wait<smem_pipes - 2>();
@@ -375,3 +376,106 @@ uint pipe_write = smem_pipes - 1;
 constexpr uint rmem_blocks = size<2>(tCsA);
 const uint k_iters = gmem_tiles + (smem_pipes - 1);
 ```
+
+Finally, we set some variables for tracking the pipeline stages. `pipe_read` and `pipe_write` correspond to the SMEM pipe to read from and write to, respectively. `rmem_blocks` is the number of values tiled across the K-mode of the SMEM tile (32) and `k_iters` tracks the number of GMEM tiles left after the prefetch and to drain the prefetched SMEM pipes.
+
+![mainloop1](/images/posts/sm86_gemm/mainloop1.png "The dotted blue sector represents the 3 SMEM pipes. We start loads for the next 2 tiles in advance, and wait for the current tile load to complete on each iter. of the mainloop.")
+
+```c++
+for (uint iter = 0;  iter < k_iters; ++iter) {
+    if (iter < gmem_tiles) {
+        copy(copy_A, tAgA(_,_,_,gmem_tile_idx), tAsA(_,_,_,pipe_write));    
+        copy(copy_B, tBgB(_,_,_,gmem_tile_idx), tBsB(_,_,_,pipe_write));
+    }
+    cp_async_fence();
+
+    CUTE_UNROLL
+    for (uint block = 0; block < rmem_blocks - 1; ++block) {
+        copy(tCsA(_,_,block+1,pipe_read), tCrA(_,_,block_pipe^1));  // TODO: call before gemm to interleave?
+        gemm(tiled_mma, tCrA(_,_,block_pipe), tCrB(_,_,block_pipe), tCrC);
+        copy(tCsB(_,_,block+1,pipe_read), tCrB(_,_,block_pipe^1));
+        block_pipe ^= 1;
+    }
+    gemm(tiled_mma, tCrA(_,_,block_pipe), tCrB(_,_,block_pipe), tCrC);
+    block_pipe ^= 1;
+    ...
+```
+
+We begin the loop body by checking if there's another K-tile still left to process. If so, we fire off the async copy for that GMEM &rarr; SMEM load, and group it with the fence, which will go into our last (3rd) SMEM pipe. Note that the fence is placed *outside* the if-statement, which creates empty copy groups for tail iterations where there are no new GMEM tiles left. This way, we ensure these tail iterations still correctly wait on their loads. 
+
+>[!NOTE]- Why empty groups?
+> ![empty](/images/posts/sm86_gemm/empty.png)
+> Suppose we are on the $(K - 1)^{\text{th}}$ iteration. At the end of each iteration, we do a preload of the first register fragment of the next iteration (see next code snippet). That is, we preload the first block of the $K^{\text{th}}$ iteration from SMEM, after calling `cp_async_wait<1>`. The `1` here ensures that we only wait on the $K^{\text{th}}$ tile, and not the $(K + 1)^{\text{th}}$ tile.
+> 
+> However, this does not exist; there is no GMEM tile left for us to preload. We thus create an empty copy group to act as a dummy position in the queue (waits on everything before) to ensure the proper wait on the last tile. Empty copy groups are *trivially completable*; waiting on them adds no overhead.
+
+Some more notable things here:
+- `copy(tCs*(_,_,block+1,pipe_read), tCr*(_,_,block_pipe^1))`
+  - For every SMEM &rarr; register copy, we move all values local to the MMA Atom and tiled across the M-mode. For the K-mode, we copy the *next* slice (`block + 1`) from SMEM to the block pipe we're *not* using in this iteration (`block_pipe ^ 1`). XOR lets us succintly switch between the register block used.
+  - We specify the copy comes from the `pipe_read` SMEM pipe-mode, as this is the ready-to-read sector.
+  - We interleave the GEMM for the current tile with this copy for the next tiles of $A$ and $B$ to maximally express the potential for ILP.
+  - We don't specify a `TiledCopy` object (like we did for GMEM &rarr; SMEM loads), as simple 32-bit reads are enough here. 
+- The `gemm(...)` API automatically dispatches to an outer product calculation based on the shape of the provided operands. We also supply the `tiled_mma` object as the first arg.
+- We set the loop bound to run just until the last tile is left to avoid an if-statement that checks if the next block pre-load should be done, and just explicitly call the last GEMM outside of the loop.
+- After each iteration, we swap *and set* `block_pipe`, as the next iter. should use the block we pre-loaded to.
+
+```c++
+    ...
+    pipe_write = pipe_read;
+    pipe_read = (pipe_read + 1) % smem_pipes;
+
+    cp_async_wait<smem_pipes - 2>();
+    __syncthreads();
+
+    if (iter != k_iters - 1) {
+        copy(tCsA(_,_,0,pipe_read), tCrA(_,_,block_pipe));
+        copy(tCsB(_,_,0,pipe_read), tCrB(_,_,block_pipe));
+    }
+    ++gmem_tile_idx;
+}
+```
+
+We then swap SMEM pipes in a "circular" fashion. Since we have processed the tile in the read pipe, we can safely overwrite it by setting it as the write pipe. The read pipe should then be set to the next tile. We modulo the incremented read pipe by the number of pipes (3) to "rotate" it back to the first pipe when it exceeds the max pipe index.
+
+After waiting on the arrival of solely the next tile and ensuring visibility, we preload the first register fragment of the *next* iteration from SMEM (as long as this is not the last tile). Finally, we update the GMEM tile index for the next iteration.
+
+## epilogue
+We'll keep the epilogue pretty simple here with the standard `axpby` epilogue of formal GEMM implementations in BLAS libraries. Mathematically...
+
+$$C_{\text{out}} = \alpha(AB) + \beta(C_{\text{in}})$$
+
+...where $\alpha, \beta$ are scalars. Note that swapping in different epilogues is relatively simple. We can do this in one line of code with CuTe's `axpby` [API](https://github.com/NVIDIA/cutlass/blob/main/include/cute/algorithm/axpby.hpp):
+
+```c++
+axpby(alpha, tCrC, beta, tCgC);
+```
+
+The function reads in each value of `tCgC`, scales it by `beta`, adds it to the corresponding value of `tCrC` scaled by `alpha`, and writes it back to `tCgC`. You may be rightly questioning the performance of this, considering every value of each thread's 8 &times; 8 fragment is strided, causing uncoalesced reads and writes. We'll explore the optimization for this and other issues right below.
+
+## optimizations
+
+After verifying the kernel's correctness, the next step is to profile and optimize. NVIDIA's nsight-compute application provides key metrics and suggestions by profiling kernels, helping us quickly narrow down on bottlenecks in our kernel. We can launch it via terminal:
+
+```bash
+ncu --set full --open-in-ui ./my_kernel
+```
+
+### epilogue coalescing
+
+For the most performant implementation, we need to consider global memory coalescing again, as `axpby` requires a global read of $C_{\text{in}}$ and a global write of $C_{\text{out}}$. Recall that $C$ is column-major (stride of 1 along its M-mode), and each thread holds an 8 &times; 8 fragment in their registers. We thus use the widest read/write instructions along the M-mode. 
+
+```c++
+auto tCgC_fragment = make_fragment_like(tCrC(_,_,0));  // (1,8) : (0,1)
+
+for (uint col = 0; col < size<2>(tCgC); ++col) {
+    copy(AutoVectorizingCopy{}, tCgC(_,_,col), tCgC_fragment);
+    axpby(alpha, tCrC(_,_,col), beta, tCgC_fragment);
+    copy(AutoVectorizingCopy{}, tCgC_fragment, tCgC(_,_,col));
+}
+```
+
+We set aside an intermediate register buffer to hold 1 column of the 8 &times; 8 fragment per iteration. Then, iterating through the columns, we copy each corresponding col. of $C_{\text{in}}$ to the buffer, apply the linear transformation with CuTe's `axpby` [API](https://github.com/NVIDIA/cutlass/blob/main/include/cute/algorithm/axpby.hpp), and finally copy the buffer back to $C_{\text{out}}$.
+
+Because `tCgC` came from our thread-local partitioning of the global $C$ matrix from the `TiledMMA`, it is "aware" of its global index. Lastly, note the use of `AutoVectorizingCopy` as the first argument. This allows `copy` to dispatch to an instruction of the widest common alignment between the source and destination tensors (in our case &mdash; 128 bits).
+
+### swizzled B matrix
