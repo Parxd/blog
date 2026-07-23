@@ -196,7 +196,7 @@ auto tidfrg_D(DTensor&& dtensor) {
 }
 ```
 
-Corresponding each term to what we saw, we see that this tiled copy uses 256 threads, where each thread is mapped to 4 values local to a copy atom (16-byte `cp.async` atom = 4x `fp32`), 4 values tiled across the K-mode, and 3 values tiled across the shared memory's 3 stages, matching our earlier visualization. Internally, `partition_X` uses the layouts from `tidfrg` by indexing the `Thr`-mode with the thread index in the actual kernel.
+Corresponding each term to what we saw, we see that this tiled copy uses 256 threads, where each thread is mapped to 4 values local to a copy atom (16-byte `cp.async` atom = 4&times; `fp32`), 4 values tiled across the K-mode, and 3 values tiled across the shared memory's 3 stages, matching our earlier visualization. Internally, `partition_X` uses the layouts from `tidfrg` by indexing the `Thr`-mode with the thread index in the actual kernel.
 
 > [!IMPORTANT] Occupancy & Parallelism
 > You may be asking how we chose the number of threads to use. GPUs have constrained on-chip memory sizes. For compute-bound problems, we typically prefer loading larger tile sizes to faster on-chip memory since data reuse is high. Fetching data from HBM once for larger tiles and reusing it from shared memory or registers helps amortize that memory latency across more arithmetic operations.
@@ -207,7 +207,7 @@ Lastly, we set up a `TiledMMA` object, which assigns threads to values for matri
 
 Each of these atoms intrinsically involve a different number of threads. For `FMA`, it's just 1 thread performing a scalar computation. Ampere TC instructions are at warp-level; they require a warp to cooperatively compute a small matrix product, while Hopper TCs involve a warpgroup (4 warps) and so on. We'll focus on the simple `FMA` case.
 
-Suppose that after we've done some tuning, we decide to use 256 threads in our kernel. Of course, writing a kernel for first time, you wouldn't know the optimal number of threads, but 128 or 256 threads tend to be good starting points for GEMMs. With each thread computing 1 scalar fragment of $C$, a threadblock of 256 threads can independently compute 256 $C$ values "per atom". For simplicity (and other reasons we'll later see), we'll arrange the atom's 256 values to compute a $(16 \times 16)$ fragment of $C$.
+Suppose that after we've done some tuning, we decide to use 256 threads in our kernel. Of course, writing a kernel for first time, you wouldn't know the optimal number of threads, but 128 or 256 threads tend to be good starting points for GEMMs. With each thread computing 1 scalar fragment of $C$, a threadblock of 256 threads can independently compute 256 $C$ values per atom. For balanced data reuse, we'll arrange the atom's 256 values to compute a $(16 \times 16)$ fragment of $C$.
 
 ![c-mma](/images/posts/sm86_gemm/c-mma.png "`print_latex` helps us visualize the atom. Each thread computes 1 scalar product and accumulates to its 1 fragment register.")
 
@@ -450,19 +450,81 @@ $$C_{\text{out}} = \alpha(AB) + \beta(C_{\text{in}})$$
 axpby(alpha, tCrC, beta, tCgC);
 ```
 
-The function reads in each value of `tCgC`, scales it by `beta`, adds it to the corresponding value of `tCrC` scaled by `alpha`, and writes it back to `tCgC`. You may be rightly questioning the performance of this, considering every value of each thread's 8 &times; 8 fragment is strided, causing uncoalesced reads and writes. We'll explore the optimization for this and other issues right below.
+The function reads in each value of `tCgC`, scales it by `beta`, adds it to the corresponding value of `tCrC` scaled by `alpha`, and writes it back to `tCgC`. You may be rightly questioning the performance of this, considering every value of each thread's 8 &times; 8 fragment is strided, causing narrow 32-bit reads and writes. We'll explore the optimization for this and other issues right below.
 
 ## optimizations
 
-After verifying the kernel's correctness, the next step is to profile and optimize. NVIDIA's nsight-compute application provides key metrics and suggestions by profiling kernels, helping us quickly narrow down on bottlenecks in our kernel. We can launch it via terminal:
+After verifying the kernel's correctness, the next step is to profile and optimize performance. NVIDIA's nsight-compute application provides key metrics and suggestions by profiling kernels, helping us quickly narrow down on bottlenecks. We can launch it via terminal:
 
 ```bash
-ncu --set full --open-in-ui ./my_kernel
+ncu --set full --open-in-ui ./my_kernel <args...>
 ```
 
-### epilogue coalescing
+### swizzles & shared memory
+Upon profiling, ncu informs us of a problem about our use of shared memory:
+![profile](/images/posts/sm86_gemm/image.png)
+While 2% of all wavefronts being excessive indicates this problem isn't really a bottleneck, solving this issue can still teach us how to use shared memory efficiently.
 
-For the most performant implementation, we need to consider global memory coalescing again, as `axpby` requires a global read of $C_{\text{in}}$ and a global write of $C_{\text{out}}$. Recall that $C$ is column-major (stride of 1 along its M-mode), and each thread holds an 8 &times; 8 fragment in their registers. We thus use the widest read/write instructions along the M-mode. 
+---
+
+### wide epilogue instructions
+This is not an optimization that was informed by profiling, but still worth chasing after. As mentioned earlier, the scattered register fragment per thread prevents us from using wide 128-bit global memory instructions. Recall that $C$ is column-major and has a stride of 1 along its M-mode. We should thus pack 4 values along the M-mode.
+Visualizing this change:
+
+![epilogue_opt1](/images/posts/sm86_gemm/epilogue_opt.png "Green squares are not to scale. Each one represents 1 value.")
+
+Changing the positions of $C$ that each thread computes requires a change in the thread-value mappings from `TiledMMA`. Thankfully, CuTe exposes a parameter in `make_tiled_mma` that lets us rearrange the mapping for situations like this.
+
+```c++
+// @tparam MMA_Atom The MMA_Atom to use in the TiledMMA
+// @tparam AtomLayoutMNK The MNK-tiling of the Atom to be performed.
+// @tparam PermuationsMNK Permutations to apply to each MNK-mode before tiling for the Atom.
+template <class MMA_Atom,
+          class AtomLayoutMNK,
+          class PermutationMNK = Tile<Underscore,Underscore,Underscore>>
+struct TiledMMA : MMA_Atom { ... }
+```
+
+The two parameters following the MMA atom are...
+- `AtomLayoutMNK`, as the name suggests, lets us define the tiling of the "physical" hardware atom. We set the M- and N-mode tile sizes to 16 earlier, leaving the K-mode out since we don't tile *atoms* across it.
+    - Recall our $C$ tile size was 128 &times; 128, while our tiled physical atoms were 16 &times; 16. `TiledMMA` partitioning automatically took care of *logically* replicating these atoms across the input tensor. This is related to why we launch the kernel with `size(mma)` threads &mdash; with 16 &times; 16 = 256 physical atoms, we need precisely 256 threads.
+- `PermutationMNK` lets us *logically* replicate the tiled atoms to a desired shape *and* apply a permutation on thread-value mappings along the MNK-modes.
+
+In summary, these parameters control the arrangement of backing hardware atoms, the logical tiling of atoms to larger tensors, and the arrangement of values from these replicated tiles.
+
+Let's take a look at the code change:
+
+```c++ {hl_lines=[4,5,6,7,8]}
+auto mma = make_tiled_mma(
+    MMA_Atom<UniversalFMA<float>>{},
+    Layout<Shape<_16,_16>>{},
+    Tile<
+        Layout<Shape<_16,_4,_2>, Stride<_4,_1,_64>>,
+        _128,
+        _32
+    >{}
+);
+```
+
+Taking a look at the 3rd argument, we see a `Tile` object, with three template args. corresponding to the MNK-modes respectively. The static integer arguments for the N- and K-modes indicate that we do not wish to apply a permutation to those modes. Instead, they represent identity functions. The actual values for N and K represent that we are logically extending the tiled MMA to the threadblock tile, which had $M = 128$, $N = 128$, and $K = 32$. Note that the *size* of the layout for the M-mode is also 128, but we are applying a permutation, so it's not just an integer.
+
+We can technically leave the N- and K-modes out since they're just identity functions, and the tiled MMA will take care of logically extending to larger tiles on a partition without permutations, but we leave them here for clarity.
+
+The layout for the M-mode can be read as a gather/scatter pattern. Given some an old M-mode index $x$, we apply the layout $f$ to get a new permuted index $y$. Recall that layouts are colexicographic, meaning that the left-most coordinate changes the "fastest".
+
+> [!NOTE]+ Examples
+> Suppose we wish to compute the new permuted index for values at $M_{\text{old}} = 2$. Going from the left, its hierarchical coordinate would then be $(2, 0, 0)$. Dotting this with the stride, we get that $M_{\text{new}} = 8$.
+> 
+> Consider values with $M_{\text{old}} = 33$. The left-most mode divides 33 twice, so the coordinate to its right should be 2, leaving a remainder of 1 in the left-most coordinate. All together, the coordinate would be $(1, 2, 0)$, which becomes $M_{\text{new}} = 6$. 
+> 
+> CuTe's `crd2idx(Index, Shape)` function can verify our results. 
+
+Looking at our layout: `Layout<Shape<_16,_4,_2>, Stride<_4,_1,_64>>`, it:
+- Scatters contiguous groups of 16 values by 4 (e.g. 0 &rarr; 0, 1 &rarr; 4, ..., 15 &rarr; 64)
+- Gathers groups of 4 values strided by 16 to be contiguous (e.g. 16 &rarr; 1, 32 &rarr; 2, 48 &rarr; 3, ...)
+- Replicates this permutation twice strided by 64 to cover indices 64 through 127 (again, could be omitted since partition will take care of tiling the permuted pattern)
+
+Great! Now, we need to tweak our epilogue to take advantage of the contiguous values. We allocate a temporary register buffer to hold 1 "column" of the 8 &times; 8 fragment at a time (could use more here), copy in the corresponding column from $C_{\text{in}}$ with 2&times; 128-bit instructions, apply `axpby`, and copy it out to $C_{\text{out}}$ with 2&times; 128-bit instructions.
 
 ```c++
 auto tCgC_fragment = make_fragment_like(tCrC(_,_,0));  // (1,8) : (0,1)
@@ -473,9 +535,6 @@ for (uint col = 0; col < size<2>(tCgC); ++col) {
     copy(AutoVectorizingCopy{}, tCgC_fragment, tCgC(_,_,col));
 }
 ```
+Lastly, note the use of `AutoVectorizingCopy` as the first argument. This allows `copy` to automatically dispatch to an instruction of the widest common alignment between the source and destination tensors.
 
-We set aside an intermediate register buffer to hold 1 column of the 8 &times; 8 fragment per iteration. Then, iterating through the columns, we copy each corresponding col. of $C_{\text{in}}$ to the buffer, apply the linear transformation with CuTe's `axpby` [API](https://github.com/NVIDIA/cutlass/blob/main/include/cute/algorithm/axpby.hpp), and finally copy the buffer back to $C_{\text{out}}$.
-
-Because `tCgC` came from our thread-local partitioning of the global $C$ matrix from the `TiledMMA`, it is "aware" of its global index. Lastly, note the use of `AutoVectorizingCopy` as the first argument. This allows `copy` to dispatch to an instruction of the widest common alignment between the source and destination tensors (in our case &mdash; 128 bits).
-
-### swizzled B matrix
+## conclusion
