@@ -36,7 +36,7 @@ header:
     link: "/"  # Click to home page
   # UI Components Control (header controls)
   showThemeSwitch: true      # Set to false to hide theme style switcher (palette icon)
-  showDarkModeSwitch: true   # Set to false to hide dark mode switcher (sun/moon icon)
+  showDarkModeSwitch: false   # Set to false to hide dark mode switcher (sun/moon icon)
   showLanguageSwitch: true   # Set to false to hide language switcher
   languageSwitchMode: "dropdown"  # Language switch mode: "dropdown" (show panel) or "cycle" (direct cycle)
 
@@ -63,17 +63,14 @@ series:
 
 
 # Default color scheme
-colorScheme: "default"
+colorScheme: "claude"
 themes:
-  default:
-    name: "Default"
-    order: 1
   claude:
     name: "Claude"
-    order: 2
+    order: 1
   purpley:
-    name: "purpley"
-    order: 3
+    name: "Purpley"
+    order: 2
 
 # Home page configuration
 home:

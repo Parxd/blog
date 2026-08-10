@@ -622,4 +622,4 @@ Lastly, note the use of `AutoVectorizingCopy` as the first argument. This allows
 ## conclusion
 In this article, we've taken a deceivingly simple single-precision GEMM to a SOTA implementation on an older Ampere GPU, learning many CUTLASS CuTe concepts along the way. The more general techniques and optimizations we've touched on also apply to production kernels in deep learning libraries.
 
-If you've made it this far, thank you for your attention; I really hope you were able to pick up a thing or two and gained an appreciation for how deep the kernel optimization rabbithole can really get. 
+If you've made it this far, thank you for your attention; I really hope you were able to pick up a thing or two and gained an appreciation for how deep the kernel optimization rabbithole can get. 
