@@ -112,7 +112,7 @@ void nn(int m, int n, int k,
 ```
 We define the SMEM tiling shapes for $A, B$ to be $128 \times 32$, and the strides for their entire tensors in DRAM to be column-major. The DRAM and SMEM $B$ tile shapes are $(N, K)$ rather than the usual $(K, N)$ to consistently keep the reduction mode $K$ on the right, like $A$, which is $(M, K)$. For the SMEM tiles, we'll use a 3-stage circular buffer for both. To use the widest granularity for reads/writes (i.e. 128-bits), both SMEM tiles should also be in column-major. Wider reads and writes lower instruction count and *generally* improve performance. 
 
-> `cp.async` can move memory at 4-byte, 8-byte, and 16-byte granularities. Furthermore, reads AND writes must strictly be to contiguous chunks of memory, unlike with the standard vectorized loads. For the $B$ matrix, some `nn` GEMM implementations read 16 contiguous bytes from DRAM and chunk it into 4 discontiguous 32-byte writes to SMEM to transpose it to enforce a stride-1 along the $N$-axis instead of $K$. This allows for 16-byte reads from SMEM to the registerfile later. Thus, we unfortunately cannot do something similar here.
+> `cp.async` can move memory at 4-, 8-, and 16-byte granularities. Furthermore, reads from DRAM AND writes to SMEM must strictly be to contiguous chunks of memory.
 
 > [!NOTE] CuTe Layouts
 > A CuTe tensor is comprised of an iterator and Layout, which is a potentially nested tuple of a Shape and Stride, which themselves are potentially nested tuples. The layout is convenient because it informs us of the logical shape of a tensor *and* the "contiguity" of the elements, which is very important when writing kernels. However, at its core, a layout is simply a function from $Z^n \rightarrow Z$ that results in a linear offset by computing a dot product between an input $n$-mode tuple (coord) and the layout's stride. Lastly, CuTe uses colexiographical order; it always "fills" a layout starting from the left-most mode moving to the right.
@@ -463,7 +463,89 @@ ncu --set full --open-in-ui ./my_kernel <args...>
 ### swizzles & shared memory
 Upon profiling, ncu informs us of a problem about our use of shared memory:
 ![profile](/images/posts/sm86_gemm/image.png)
-While 2% of all wavefronts being excessive indicates this problem isn't really a bottleneck, solving this issue can still teach us how to use shared memory efficiently.
+While 2% of all wavefronts being excessive indicates this problem isn't really a bottleneck, solving this issue can still teach us how to use shared memory efficiently. What "excessive wavefronts" is referring to are shared memory bank conflicts. 
+
+>[!IMPORTANT] Shared Memory Banks
+> Shared memory on NVIDIA GPUs is organized into 32 banks, each 4 bytes wide. Each of these banks can service exactly one 4-byte word per "cycle" for a warp. The term cycle here is defined loosely; we're talking about the smallest possible unit of time that a bank can fulfill a single request.
+> 
+> On the software side, data is contiguously arranged into the banks from bank 0 to 31, and wrapping back around when more than 32 &times; 4 bytes are used. A bank *conflict* then occurs when lanes in the *same* warp attempt to access *different* data from the *same* bank. Note that if lanes try to access the *same* data from the *same* bank, this does not cause a conflict; the bank *multicasts* this value across the warp.
+>
+> The number of banks is not just coincidentally the same as the number of threads in a warp. This was designed such that if every lane in a warp requests contiguous 4-byte (or smaller) words, the banks can fulfill the warp's memory request in one cycle.
+> 
+> To illustrate, suppose we have 32 &times; 32 = 1024 `fp32` values in shared memory as the array `arr`. Then, the value `arr[i]` at index `i` will be held by bank `i % 32`. Suppose now that thread 0 tries to read/write to `arr[0]`, thread 1 to `arr[32]`, and so on, until thread 31 reads/writes to `arr[31 * 32]`. This access pattern requires bank 0 to serialize all 32 lanes' requests, causing a worst-case 32-way bank conflict. 
+> 
+> In our case, an access pattern for either $A$ or $B$ in SMEM is sub-optimal. Analyzing both read/write patterns for $A$ and $B$ will be too verbose, so I'll tell you right now that the read pattern for $B$ is the issue, leaving the other patterns for you as exercises.
+
+Recall from our tiled MMA layout that each group of 16 consecutive threads share the same "N-row". Visualizing the $B$ read pattern:
+
+![smem_opt1](/images/posts/sm86_gemm/smem_opt1.png "As always &mdash; not to scale")
+
+For each iteration across $K$, we observe that threads 0 through 15 will conflict with threads 16 through 31: a 2-way conflict. 
+
+> [!NOTE]- Conflicts + Vectorized Instructions?
+> You may be wondering how bank conflicts occur when vectorized accesses come into play. For example, 128-bit reads/writes for each thread would span 4 banks simulatenously. Since all 32 banks can only service a maximum of 1024 bits per cycle, if every thread is making 128-bit reads for a total of 4096 bits across the warp, some lanes would need to request memory from the same bank by pigeonhole principle.
+>
+> In this case, the banks split up the warp's memory request into 4 phases, servicing 8 threads per phase, where phase 0 is threads 0-7, phase 1 is threads 8-15, and so on. Lanes in different phases may then access the same 4 banks and not considered be a conflict by ncu; lanes in the same phase need to stick to their respective banks.
+
+Let's talk solutions now. There are 2 common ways to solve conflicts:
+- **Padding** - Pad SMEM with dummy memory to "push" data to certain banks. This is conceptually easier and straightforward to implement, but comes at the cost of wasting scarce SMEM. 
+- **Swizzling** - Re-map / swap certain blocks of SMEM addresses to control which data is under which bank. While a little harder to understand, swizzling adds very little overhead. We'll look at this solution for our case.
+
+An example swizzle for $B$ would be to swap the data in `B0` and `B1` in the second row. This way, data required for the first K-iteration can be serviced by both banks at once, rather than being serialized by one bank. We would repeat this pattern by swapping `B2` with `B3` for the second K-iteration, and so on. Typically, XOR is used in some way for remapping the SMEM addresses since it's bijective (that is, $(x \oplus c) \oplus c = x$) and cheap. Recall its truth table:
+
+![xor_truth](/images/posts/sm86_gemm/xor_truth.png)
+
+Applying this to the example, we can XOR addresses 32 and 33 with a fixed constant of 1, effectively swapping their addresses. Before this though, since we need to repeat this pattern every 2 rows for other warps, we first modulo the address by 64. To then leave the first of the 2 rows identity, we right-shift the modulo'd address by 5 (division by 32), and only then do we apply the XOR. All together: `swizzled = addr ^ (addr % 64 >> 5)`.
+
+We'll now take a look at the slightly more complex CUTLASS API. For reference, the implementation is [here](https://github.com/NVIDIA/cutlass/blob/main/include/cute/swizzle.hpp). The docstring sheds some light:
+
+```c++
+// A generic Swizzle functor
+/* 0bxxxxxxxxxxxxxxxYYYxxxxxxxZZZxxxx
+ *                               ^--^ MBase is the number of least-sig bits to keep constant
+ *                  ^-^       ^-^     BBits is the number of bits in the mask
+ *                    ^---------^     SShift is the distance to shift the YYY mask
+ *                                       (pos shifts YYY to the right, neg shifts YYY to the left)
+ *
+ * e.g. Given
+ * 0bxxxxxxxxxxxxxxxxYYxxxxxxxxxZZxxx
+ * the result is
+ * 0bxxxxxxxxxxxxxxxxYYxxxxxxxxxAAxxx where AA = ZZ xor YY
+ */
+template <int BBits, int MBase, int SShift = BBits>
+struct Swizzle { ... }
+```
+
+Don't worry if you don't understand this at a first glance. What this API does is it effectively formalizes what we discussed in the previous example for more general power-of-2 swizzles in binary. I won't delve into the implementation details (see the swizzling portion of Aleksa Gordic's [blog](https://www.aleksagordic.com/blog/matmul)), but rather what you as the user need to know to start using it. 
+
+The 3 parameters are used as follows: A bitmask of size `BBits` of 1s starting at bit `SShift + MBase` (zero-indexed) is bitwise ANDed with the input address. The resulting mask is then right- or left-shifted by `SShift` bits, depending on its sign, and XORed with the input address. 
+
+A couple things to note: The swizzle...
+- acts as an identity function for any addresses below 2<sup>`SShift + MBase`</sup>
+- operates at a "granularity" of `MBase` address indices.
+- must be applied to both the write *and* read side when using SMEM to ensure consistency.
+- is applied as a composition on top of another layout, as we've seen earlier in the CuTe API.
+
+Applying this to our example again, we need to check if the 5th bit of the input (corresponding to 32) is 1 by using a bitmask with a width of just 1 and shifting it down to the appropriate bit to XOR with. We know at this point that `BBits = 1` and `SShift + MBase = 5`, since addresses below 32 should remain identity.
+
+Now, you might be saying that `MBase` should be 0, since we XORed addresses by 1 earlier. This would be correct if we were solely considering the read side. However, recall that we used 128-bit copies in the GMEM &rarr; SMEM write side, which thus requires an alignment of 4 floats. Swizzling at a granularity of 1 address would break this alignment requirement. Instead, we need to swizzle at a minimum granularity of 4 address indices, meaning we should have `MBase = 2` and `SShift = 3`. Finally, we have the new $B$ SMEM layout to be:
+
+```c++ {hl_lines=[7]}
+auto sB_layout_swizzled = composition(Swizzle<1,2,3>{}, sB_layout);
+
+...
+
+auto kernel = ampere_sgemm_128x32_3stage<decltype(stride_A), decltype(stride_B), decltype(stride_C),
+                                         decltype(sA_layout),
+                                         decltype(sB_layout_swizzled),
+                                         decltype(cta_shape),
+                                         decltype(copy_A), decltype(copy_B), decltype(mma)>;
+```
+
+> [!NOTE]- No Modulo?
+> What ensures the swizzle pattern is identity for addresses 64-95, 128-159, and so on, but is still applied for addresses 96-127, 160-191, and so on? Note their binary representations. Since only the non-identity addresses would have a 1 in the 5th bit, we're all set. 
+> 
+> But suppose we *did* want a swizzle for these identity addresses. We would then widen the bitmask by increasing `BBits` to 2. Note that a restriction is that the bitmask must be of adjacent bits. But this is almost never a problem, since use-cases where non-adjacent bits are needed are rare (e.g. bitmask on bits 7 and 8 but XOR with bits 2 and 4).
 
 ---
 
@@ -510,7 +592,7 @@ Taking a look at the 3rd argument, we see a `Tile` object, with three template a
 
 We can technically leave the N- and K-modes out since they're just identity functions, and the tiled MMA will take care of logically extending to larger tiles on a partition without permutations, but we leave them here for clarity.
 
-The layout for the M-mode can be read as a gather/scatter pattern. Given some an old M-mode index $x$, we apply the layout $f$ to get a new permuted index $y$. Recall that layouts are colexicographic, meaning that the left-most coordinate changes the "fastest".
+The layout for the M-mode can be read as a gather/scatter pattern. Given some an unpermuted M-mode index $x$, we apply the layout $f$ to get a new permuted index $y$. Recall that layouts are colexicographic, meaning that the left-most coordinate changes the "fastest".
 
 > [!NOTE]+ Examples
 > Suppose we wish to compute the new permuted index for values at $M_{\text{old}} = 2$. Going from the left, its hierarchical coordinate would then be $(2, 0, 0)$. Dotting this with the stride, we get that $M_{\text{new}} = 8$.
@@ -538,3 +620,6 @@ for (uint col = 0; col < size<2>(tCgC); ++col) {
 Lastly, note the use of `AutoVectorizingCopy` as the first argument. This allows `copy` to automatically dispatch to an instruction of the widest common alignment between the source and destination tensors.
 
 ## conclusion
+In this article, we've taken a deceivingly simple single-precision GEMM to a SOTA implementation on an older Ampere GPU, learning many CUTLASS CuTe concepts along the way. The more general techniques and optimizations we've touched on also apply to production kernels in deep learning libraries.
+
+If you've made it this far, thank you for your attention; I really hope you were able to pick up a thing or two and gained an appreciation for how deep the kernel optimization rabbithole can really get. 
