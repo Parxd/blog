@@ -16,17 +16,14 @@
   </head>
 
   <body class="bg-background text-foreground min-h-screen antialiased">
-    <!-- 阅读进度条 -->
     {{ partial "ui/reading-progress.html" . }}
 
     {{ partial "navigation/header.html" . }}
 
-    <!-- 主内容区域 - 始终居中 -->
     <main class="mx-auto max-w-4xl px-4 py-6">
       {{ block "main" . }}{{ end }}
     </main>
 
-    <!-- 侧边栏 TOC 和 Series - 使用固定定位，不影响正文布局 -->
     {{- if .IsPage }}
       {{- $tocEnabled := true }}
       {{- $globalTocConfig := .Site.Params.toc | default dict }}
