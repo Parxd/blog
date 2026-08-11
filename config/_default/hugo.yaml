@@ -2,7 +2,7 @@ baseURL: https://parxd.github.io/
 languageCode: en-US
 defaultContentLanguage: en
 defaultContentLanguageInSubdir: false
-title: Hugo Narrow
+title: Daniel Park
 theme: "hugo-narrow"
 
 hasCJKLanguage: true

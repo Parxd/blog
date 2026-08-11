@@ -7,8 +7,12 @@
     {{ partial "layout/head.html" . }}
     <script>
       // Light mode removed site-wide; always force dark, ignore stored/system preference.
+      // Also pin theme='dark' in localStorage so the theme's own UIManager (main.js) doesn't
+      // treat it as 'system' and strip the dark class on prefers-color-scheme change events
+      // (which mobile browsers can fire when resuming from background/tab switcher).
       (function() {
         const colorScheme = localStorage.getItem('colorScheme') || '{{ site.Params.colorScheme | default "shadcn" }}';
+        localStorage.setItem('theme', 'dark');
         document.documentElement.setAttribute('data-theme', colorScheme);
         document.documentElement.classList.add('dark');
       })();
