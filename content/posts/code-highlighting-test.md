@@ -1,7 +1,7 @@
 ---
 title: "Code Highlighting Test"
 date: 2024-01-16T10:00:00+08:00
-draft: false
+draft: true
 description: "Testing code highlighting features"
 tags: ["test", "code", "syntax-highlighting"]
 categories: ["code-highlighting"]
