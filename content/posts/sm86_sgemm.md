@@ -21,8 +21,10 @@ Large and square-ish GEMM (general matrix-multiply) routines are embarrassingly 
 > 
 > Simplifying the memory operations to loading $A, B$ once and storing to $C$ once from/to DRAM, this results in $(2048^2 \times 3) \times 4$ bytes of movement required. The arithmetic intensity (AI) required can be computed with $2 \times M \times N \times K$, as $K$ inner products & accumulations (using `FMA`) are required along both $M$ and $N$ axes and dividing by the bytes of memory moved. Thus, the AI is $\frac{2(2048^3)}{3(4)(2048^2)} \approx 341$ FLOPs/byte.
 > 
-> Now, mapping to hardware, we use the A100 PCIe 80 GB. as an example, which has an off-chip DRAM bandwidth of $1.94$ TFLOPs/sec. and peak `fp32` performance of $19.49$ TFLOPs/sec. Theoretically, with no compute roof, DRAM could allow us a blistering $1.94 \frac{\text{TB.}}{\text{sec.}} \times 341 \frac{\text{FLOPs}}{\text{byte}} \approx 661 \frac{\text{TFLOPs}}{\text{sec.}}$. However, since the underlying `fp32` ALUs are capped at $19.49$ TFLOPs/sec., we are compute-bound. Note that in reality, we will almost never reach either of these roofs, as we will later see. 
-> ![roofline diagram](/images/posts/sm86_gemm/roofline-dark.png "an example roofline diagram with an `fp32` ridge point (not to scale)")
+> Now, mapping to hardware, we use the A100 PCIe 80 GB. as an example, which has an off-chip DRAM bandwidth of $1.94$ TB./sec. and peak `fp32` performance of $19.49$ TFLOPs/sec. Looking at the roofline diagram below, we see two "roofs" that define the max theoretical performance of the chip under some workload. Any workload under the red ceiling on this particular chip will be considered "memory-bound", while any under the green are considered "compute-bound". The red ceiling itself shows that an algorithm with lower "use" for every byte moved will be limited by the memory subsystem and not saturate compute resources.
+> 
+> Theoretically, with no compute roof, DRAM could allow us a blistering $1.94 \frac{\text{TB.}}{\text{sec.}} \times 341 \frac{\text{FLOPs}}{\text{byte}} \approx 661 \frac{\text{TFLOPs}}{\text{sec.}}$. However, since the underlying `fp32` ALUs are capped at $19.49$ TFLOPs/sec., we are compute-bound. Note that in reality, we will almost never reach either of these roofs, as we will later see. 
+> ![roofline diagram](/images/posts/sm86_gemm/roofline-dark.png "an example roofline diagram with an `fp32` ridge point (not to scale, the y-axis should be in units of TFLOPs/sec.)")
 > 
 > For a more detailed explanation of the roofline model, see Modal's [glossary](https://modal.com/gpu-glossary/perf/roofline-model).
 
@@ -553,7 +555,7 @@ auto kernel = ampere_sgemm_128x32_3stage<decltype(stride_A), decltype(stride_B),
 This is not an optimization that was informed by profiling, but still worth chasing after. As mentioned earlier, the scattered register fragment per thread prevents us from using wide 128-bit global memory instructions. Recall that $C$ is column-major and has a stride of 1 along its M-mode. We should thus pack 4 values along the M-mode.
 Visualizing this change:
 
-![epilogue_opt1](/images/posts/sm86_gemm/epilogue_opt.png "Green squares are not to scale. Each one represents 1 value.")
+![epilogue_opt1](/images/posts/sm86_gemm/epilogue_opt_bg.png "Green squares are not to scale. Each one represents 1 value.")
 
 Changing the positions of $C$ that each thread computes requires a change in the thread-value mappings from `TiledMMA`. Thankfully, CuTe exposes a parameter in `make_tiled_mma` that lets us rearrange the mapping for situations like this.
 
